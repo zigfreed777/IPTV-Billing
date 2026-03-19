@@ -1,0 +1,235 @@
+{% extends 'admin/base.html' %}
+{% block title %}Настройки{% endblock %}
+{% block content %}
+<div class="page-title animate">⚙️ Настройки платформы</div>
+
+<!-- Tab nav -->
+<div style="display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;overflow-x:auto">
+  {% for tid, tlabel, ticon in [
+    ('brand','Брендинг','🎨'),('billing','Биллинг','💳'),
+    ('cabinet','Кабинет','🏠'),('security','Безопасность','🔒'),
+    ('notify','Уведомления','🔔'),
+  ] %}
+  <a href="?tab={{ tid }}"
+     style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:{% if tab==tid %}700{% else %}500{% endif %};
+       background:{% if tab==tid %}rgba(124,58,237,.2){% else %}transparent{% endif %};
+       color:{% if tab==tid %}#a78bfa{% else %}var(--text2){% endif %};
+       text-decoration:none;transition:.2s;white-space:nowrap;border:{% if tab==tid %}1px solid rgba(124,58,237,.3){% else %}1px solid transparent{% endif %}">
+    {{ ticon }} {{ tlabel }}
+  </a>
+  {% endfor %}
+</div>
+
+<form method="POST">
+  <input type="hidden" name="_csrf" value="{{ csrf }}">
+
+  <!-- Branding -->
+  {% if tab == 'brand' %}
+  <div class="grid grid-2" style="margin-bottom:16px">
+    <div class="card animate">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🎨</span> Идентификация</div></div>
+      {% for s in groups.get('brand', []) %}
+      <div class="form-group">
+        <label class="form-label">{{ s.label }}</label>
+        {% if s.type == 'color' %}
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" name="{{ s.key }}" value="{{ s.value }}" style="width:48px;height:36px;padding:2px;border-radius:6px;cursor:pointer">
+          <input type="text" name="_{{ s.key }}_hex" value="{{ s.value }}" style="flex:1;font-family:monospace"
+                 onchange="document.querySelector('[name=\'{{ s.key }}\']').value=this.value">
+        </div>
+        {% elif s.type == 'bool' %}
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="{{ s.key }}" class="toggle-input" {% if s.value=='1' %}checked{% endif %}><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          <span style="font-size:13px;color:var(--text2)">Включено</span>
+        </label>
+        {% else %}
+        <input type="{{ 'number' if s.type in ('int','float') else 'text' }}" name="{{ s.key }}" value="{{ s.value }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">👁</span> Предпросмотр</div></div>
+      <div style="background:var(--surface3);border-radius:12px;padding:20px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div id="prev-icon" style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px">
+            {{ groups.get('brand',[{'key':'brand_logo_emoji','value':'📺'}])|selectattr('key','equalto','brand_logo_emoji')|map(attribute='value')|first }}
+          </div>
+          <div>
+            <div id="prev-name" style="font-weight:800;font-size:15px">
+              {{ groups.get('brand',[{'key':'brand_name','value':'IPTV Billing'}])|selectattr('key','equalto','brand_name')|map(attribute='value')|first }}
+            </div>
+            <div id="prev-tagline" style="font-size:11px;color:var(--text3)">
+              {{ groups.get('brand',[{'key':'brand_tagline','value':''}])|selectattr('key','equalto','brand_tagline')|map(attribute='value')|first }}
+            </div>
+          </div>
+        </div>
+        <div style="height:4px;border-radius:2px;background:linear-gradient(90deg,var(--primary),var(--accent));margin-bottom:10px"></div>
+        <div style="font-size:12px;color:var(--text3)">Это предпросмотр навигации сайдбара и лендинга</div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);padding:10px;background:rgba(99,102,241,.06);border-radius:8px;line-height:1.7">
+        💡 Изменения цветов вступают в силу после перезапуска сервера или при включении CSS-переменных через <code>S</code>-словарь в шаблонах
+      </div>
+    </div>
+  </div>
+
+  <!-- Billing -->
+  {% elif tab == 'billing' %}
+  <div class="grid grid-2">
+    <div class="card animate">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🎁</span> Пробный период</div></div>
+      {% for key in ['trial_enabled','trial_days','trial_package_id'] %}
+      {% set s = groups.get('billing',[])|selectattr('key','equalto',key)|list %}
+      {% if s %}{% set s = s[0] %}
+      <div class="form-group">
+        <label class="form-label">{{ s.label }}</label>
+        {% if s.type == 'bool' %}
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="{{ s.key }}" class="toggle-input" {% if s.value=='1' %}checked{% endif %}><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          <span style="font-size:13px;color:var(--text2)">Включено</span>
+        </label>
+        {% elif s.key == 'trial_package_id' %}
+        <select name="{{ s.key }}">
+          {% for p in packages %}<option value="{{ p.id }}" {% if s.value==p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+        {% else %}
+        <input type="number" name="{{ s.key }}" value="{{ s.value }}" min="0">
+        {% endif %}
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">💰</span> Оплата и списания</div></div>
+      {% for key in ['min_topup','max_topup','charge_hour','low_balance_days','grace_period_hours','referral_bonus'] %}
+      {% set s = groups.get('billing',[])|selectattr('key','equalto',key)|list %}
+      {% if s %}{% set s = s[0] %}
+      <div class="form-group">
+        <label class="form-label">{{ s.label }}</label>
+        <input type="number" name="{{ s.key }}" value="{{ s.value }}"
+               min="0" step="{{ '0.01' if s.type=='float' else '1' }}">
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+
+  <!-- Cabinet -->
+  {% elif tab == 'cabinet' %}
+  <div class="grid grid-2">
+    <div class="card animate">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🏠</span> Разделы кабинета</div></div>
+      {% for key in ['cab_show_referrals','cab_show_chat','cab_show_media'] %}
+      {% set s = groups.get('cabinet',[])|selectattr('key','equalto',key)|list %}
+      {% if s %}{% set s = s[0] %}
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="{{ s.key }}" class="toggle-input" {% if s.value=='1' %}checked{% endif %}><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          <span style="font-weight:500">{{ s.label }}</span>
+        </label>
+      </div>
+      {% endif %}{% endfor %}
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
+        {% for key in ['cab_topup_methods','stream_formats','playlist_ttl'] %}
+        {% set s = groups.get('cabinet',[])|selectattr('key','equalto',key)|list %}
+        {% if s %}{% set s = s[0] %}
+        <div class="form-group">
+          <label class="form-label">{{ s.label }}</label>
+          <input type="{{ 'number' if s.type=='int' else 'text' }}" name="{{ s.key }}" value="{{ s.value }}">
+          {% if key == 'cab_topup_methods' %}<div class="form-hint">card, crypto, transfer — через запятую</div>{% endif %}
+          {% if key == 'stream_formats' %}<div class="form-hint">ts, m3u8, hls — через запятую</div>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">✏️</span> Тексты</div></div>
+      {% for key in ['cab_welcome_text','cab_support_text'] %}
+      {% set s = groups.get('cabinet',[])|selectattr('key','equalto',key)|list %}
+      {% if s %}{% set s = s[0] %}
+      <div class="form-group">
+        <label class="form-label">{{ s.label }}</label>
+        <textarea name="{{ s.key }}" rows="3">{{ s.value }}</textarea>
+      </div>
+      {% endif %}{% endfor %}
+      <div style="padding:12px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:10px;font-size:12px;color:var(--text2);margin-top:8px">
+        💡 Тексты отображаются в кабинете пользователя в соответствующих разделах
+      </div>
+    </div>
+  </div>
+
+  <!-- Security -->
+  {% elif tab == 'security' %}
+  <div class="grid grid-2">
+    <div class="card animate">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🚪</span> Регистрация</div></div>
+      {% for key in ['reg_enabled','reg_invite_only','require_email_confirm'] %}
+      {% set s = groups.get('security',[])|selectattr('key','equalto',key)|list %}
+      {% if s %}{% set s = s[0] %}
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="{{ s.key }}" class="toggle-input" {% if s.value=='1' %}checked{% endif %}><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          <span style="font-weight:500">{{ s.label }}</span>
+        </label>
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🔐</span> Сессии и лимиты</div></div>
+      {% for key in ['login_attempts','login_window_sec','session_days'] %}
+      {% set s = groups.get('security',[])|selectattr('key','equalto',key)|list %}
+      {% if s %}{% set s = s[0] %}
+      <div class="form-group">
+        <label class="form-label">{{ s.label }}</label>
+        <input type="number" name="{{ s.key }}" value="{{ s.value }}" min="1">
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+
+  <!-- Notify -->
+  {% elif tab == 'notify' %}
+  <div class="grid grid-2">
+    <div class="card animate">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🔔</span> Email-уведомления</div></div>
+      {% for s in groups.get('notify', []) %}
+      <div class="form-group">
+        <label class="form-label">{{ s.label }}</label>
+        {% if s.type == 'bool' %}
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="{{ s.key }}" class="toggle-input" {% if s.value=='1' %}checked{% endif %}><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          <span style="font-size:13px;color:var(--text2)">Включено</span>
+        </label>
+        {% else %}
+        <input type="text" name="{{ s.key }}" value="{{ s.value }}">
+        {% if s.key == 'notif_days_before' %}<div class="form-hint">Через запятую: 7,3,1 — уведомить за 7, 3 и 1 день</div>{% endif %}
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">ℹ️</span> Как работает</div></div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8">
+        <div style="margin-bottom:8px">🔔 <b>Уведомления об истечении</b> — отправляются когда баланса осталось на N дней по настройке биллинга</div>
+        <div style="margin-bottom:8px">📧 <b>SMTP</b> — настраивается в разделе <a href="/admin/smtp" style="color:var(--primary-light)">Email / SMTP</a></div>
+        <div style="margin-bottom:8px">📨 <b>Рассылки</b> — ручная отправка в разделе <a href="/admin/broadcasts" style="color:var(--primary-light)">Рассылки</a></div>
+        <div>💬 <b>Чат</b> — мгновенное уведомление в кабинете пользователя без email</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div style="margin-top:20px;display:flex;gap:10px">
+    <button type="submit" class="btn btn-primary">💾 Сохранить настройки</button>
+    <a href="?tab={{ tab }}" class="btn btn-ghost">Отменить</a>
+  </div>
+</form>
+{% endblock %}

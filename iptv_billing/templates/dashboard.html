@@ -1,0 +1,146 @@
+{% extends 'dash_base.html' %}
+{% block title %}Обзор — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1>{{ S.get("cab_welcome_text","Добро пожаловать") }}, {{ user.login }}!</h1>
+      <p class="subtitle">Обзор вашей подписки и активных услуг</p>
+    </div>
+    {% if not user.email_confirmed %}
+    <form method="POST" action="/dashboard/resend_confirm">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <button class="btn btn-secondary btn-sm">📧 Подтвердить email</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if unread_chat %}
+<div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:12px;margin-bottom:20px">
+  <span style="font-size:22px">💬</span>
+  <div style="flex:1">
+    <div style="font-weight:600;font-size:14px">Новое сообщение от поддержки</div>
+    <div style="font-size:12px;color:var(--text2)">У вас {{ unread_chat }} непрочитанных сообщений</div>
+  </div>
+  <a href="/dashboard/chat" class="btn btn-primary btn-sm">Открыть →</a>
+</div>
+{% endif %}
+
+<!-- Balance card -->
+<div class="balance-card animate">
+  <div class="balance-icon">💳</div>
+  <div style="flex:1">
+    <div class="balance-amount">{{ user.balance|round(2) }} <span style="font-size:18px;font-weight:500;color:var(--text2)">₽</span></div>
+    <div class="balance-label">Текущий баланс</div>
+    {% if daily_cost > 0 %}
+    <div class="balance-days">
+      {% set days_remaining = (user.balance / daily_cost)|int %}
+      Хватит примерно на <b>{{ days_remaining }} дней</b> · {{ daily_cost }} ₽/сут
+    </div>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+    <a href="/dashboard/finances" class="btn btn-primary btn-sm">+ Пополнить</a>
+    <a href="/dashboard/services" class="btn btn-ghost btn-sm">Услуги</a>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:20px">
+  <!-- Active packages -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title"><span class="card-title-icon">📦</span> Активные пакеты</div>
+      <a href="/dashboard/services" class="btn btn-ghost btn-sm">Управление →</a>
+    </div>
+    {% if packages %}
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {% for p in packages %}
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(110,231,183,.05);border:1px solid rgba(110,231,183,.12);border-radius:10px">
+        <span style="font-size:24px;flex-shrink:0">{{ p.service_icon }}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div>
+          <div style="font-size:11px;color:var(--text3)">{{ p.service_name }} · {{ p.connections }} подкл. · {{ p.price_per_day }} ₽/сут</div>
+        </div>
+        <span class="badge badge-green" style="flex-shrink:0"><span class="badge-dot"></span>Актив</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;color:var(--text3)">
+      <span>{{ connections }} подключений · {{ packages|length }} пакетов</span>
+      <span style="font-weight:600;color:var(--primary-light)">{{ daily_cost }} ₽/сут</span>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📦</div>
+      <div class="empty-state-text">Нет активных пакетов</div>
+      <a href="/dashboard/services" class="btn btn-primary btn-sm" style="margin-top:12px">Подключить услугу →</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Token + stream status -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-icon">📡</span> Доступ к медиа</div>
+        <a href="/dashboard/media" class="btn btn-ghost btn-sm">Настройки →</a>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Секретный токен</div>
+      <div class="token-box" data-copy="{{ user.secret_token }}" title="Нажмите для копирования">
+        <div class="token-chars" data-token="{{ user.secret_token }}"></div>
+        <div class="token-hint">Нажмите для копирования</div>
+        <div class="token-copied">✓ Скопировано</div>
+      </div>
+      {% if connections > 0 %}
+      <div class="stream-status" style="margin-top:12px">
+        <div class="stream-dot"></div>
+        <span>До <b>{{ connections }}</b> одновременных подключений</span>
+      </div>
+      {% endif %}
+    </div>
+    <div class="card animate animate-2">
+      <div class="card-glow"></div>
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-icon">👥</span> Рефералы</div>
+        {% if referrals %}<span class="badge badge-purple">{{ referrals|length }}</span>{% endif %}
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Ваш реферальный код:</div>
+      <div class="copy-field">
+        <code>{{ user.referral_code }}</code>
+        <button class="btn btn-ghost btn-xs" data-copy="{{ user.referral_code }}">Копировать</button>
+      </div>
+      {% if not referrals %}
+      <div style="font-size:12px;color:var(--text3);margin-top:8px">Пригласите друзей и получайте бонусы 🎁</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Recent charges -->
+{% if charges %}
+<div class="card animate">
+  <div class="card-glow"></div>
+  <div class="card-head">
+    <div class="card-title"><span class="card-title-icon">📋</span> Последние списания</div>
+    <a href="/dashboard/finances" class="btn btn-ghost btn-sm">История →</a>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Пакет</th><th>Сумма</th><th>Дата</th></tr></thead>
+      <tbody>
+      {% for c in charges %}
+      <tr>
+        <td style="font-weight:500">{{ c.pkg_name }}</td>
+        <td style="color:#f87171;font-weight:600">−{{ c.amount }} ₽</td>
+        <td class="tbl-mono" style="font-size:12px">{{ (c.charged_at or '')[:16] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

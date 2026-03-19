@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Отписка от рассылки{% endblock %}
+{% block content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:var(--bg)">
+  <div class="card" style="max-width:420px;width:100%;text-align:center">
+    <div class="card-glow"></div>
+    {% if status == 'ok' %}
+    <div style="font-size:56px;margin-bottom:16px">✅</div>
+    <h2 style="color:#6ee7b7;margin:0 0 8px">Отписка оформлена</h2>
+    <p style="color:var(--text2)">{{ login }}, вы отписались от новостных рассылок.</p>
+    <p style="color:var(--text3);font-size:13px">Уведомления об истечении подписки по-прежнему будут приходить.</p>
+    <div style="margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <a href="/login" class="btn btn-ghost">Войти в кабинет</a>
+      <form method="POST" action="/resubscribe">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="token" value="{{ token }}">
+        <button type="submit" class="btn btn-secondary btn-sm">Подписаться снова</button>
+      </form>
+    </div>
+    {% else %}
+    <div style="font-size:56px;margin-bottom:16px">❌</div>
+    <h2 style="color:#f87171;margin:0 0 8px">Ссылка недействительна</h2>
+    <p style="color:var(--text2)">Ссылка для отписки устарела или некорректна.</p>
+    <a href="/login" class="btn btn-ghost" style="margin-top:16px;display:inline-block">Войти в кабинет</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

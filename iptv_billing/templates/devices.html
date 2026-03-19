@@ -1,0 +1,158 @@
+{% extends 'dash_base.html' %}
+{% block title %}Устройства — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-title animate">Устройства</div>
+    <div class="page-subtitle animate">
+      Подключено {{ devices|selectattr('is_active','eq',1)|list|length }} из {{ user.max_devices }} доступных
+    </div>
+    <!-- LIMIT BAR -->
+    {% set active_count = devices|selectattr('is_active','eq',1)|list|length %}
+    {% set pct = (active_count / user.max_devices * 100)|int if user.max_devices else 0 %}
+    <div class="card animate" style="margin-bottom:16px">
+      <div class="card-glow"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--text2)">Лимит устройств</div>
+        <div style="font-size:13px;color:var(--text3)">
+          <b style="color:{% if pct>=100 %}#f87171{% elif pct>=80 %}#fde68a{% else %}#6ee7b7{% endif %}">{{ active_count }}</b> / {{ user.max_devices }}
+        </div>
+      </div>
+      <div class="progress" style="height:6px">
+        <div class="progress-bar {% if pct>=100 %}progress-bar-danger{% elif pct>=80 %}progress-bar-warning{% else %}progress-bar-success{% endif %}"
+             data-width="{{ pct }}" style="width:0"></div>
+      </div>
+      {% if pct >= 100 %}
+      <div style="font-size:12px;color:#f87171;margin-top:8px">⚠ Лимит достигнут. Обновите тариф или удалите устройство.</div>
+      {% endif %}
+    </div>
+    <div class="grid grid-2 animate">
+      <!-- ADD DEVICE -->
+      <div class="card">
+        <div class="card-glow"></div>
+        <div class="card-head">
+          <div class="card-title"><span class="card-title-icon">➕</span> Добавить устройство</div>
+        </div>
+        {% if active_count < user.max_devices %}
+        <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="add">
+          <div class="form-group">
+            <label class="form-label">Название устройства</label>
+            <div class="input-wrap has-icon">
+              <span class="input-icon">📝</span>
+              <input type="text" name="name" placeholder="Мой телевизор" required maxlength="64">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">MAC адрес <span>(необязательно)</span></label>
+            <div class="input-wrap has-icon">
+              <span class="input-icon">🔗</span>
+              <input type="text" name="mac" placeholder="AA:BB:CC:DD:EE:FF"
+                     pattern="([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"
+                     title="Формат: AA:BB:CC:DD:EE:FF">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Тип устройства</label>
+            <div class="input-wrap has-icon">
+              <span class="input-icon">📺</span>
+              <select name="device_type">
+                <option value="">— выберите тип —</option>
+                <option value="tv">📺 Smart TV</option>
+                <option value="phone">📱 Смартфон</option>
+                <option value="tablet">📟 Планшет</option>
+                <option value="stb">📦 ТВ-приставка</option>
+                <option value="pc">💻 Компьютер</option>
+                <option value="other">🔌 Другое</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Добавить устройство</button>
+        </form>
+        {% else %}
+        <div class="sub-box sub-inactive" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">🚫</div>
+          <div style="font-weight:600;color:#fca5a5;margin-bottom:4px">Лимит устройств исчерпан</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:14px">
+            Удалите одно из устройств или обновите тариф
+          </div>
+          <a href="/dashboard" class="btn btn-secondary btn-sm">Сменить тариф</a>
+        </div>
+        {% endif %}
+      </div>
+      <!-- TOKEN -->
+      <div class="card">
+        <div class="card-glow"></div>
+        <div class="card-head">
+          <div class="card-title"><span class="card-title-icon">🔑</span> Токен подключения</div>
+        </div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+          Используйте этот токен в настройках вашего IPTV-приложения для авторизации устройства.
+        </p>
+        <div class="token-box" data-copy="{{ user.secret_token }}">
+          <div class="token-chars" data-token="{{ user.secret_token }}"></div>
+          <div class="token-hint">Нажмите для копирования</div>
+          <div class="token-copied">✓ Скопировано</div>
+        </div>
+        <div style="margin-top:14px;padding:12px;background:rgba(245,158,11,.07);
+             border:1px solid rgba(245,158,11,.2);border-radius:8px;
+             font-size:12px;color:#fde68a;display:flex;gap:8px;align-items:flex-start">
+          <span>⚠</span>
+          <span>Не передавайте токен третьим лицам — он даёт доступ к вашей подписке</span>
+        </div>
+      </div>
+    </div>
+    <!-- DEVICES LIST -->
+    <div class="card animate animate-2" style="margin-top:16px">
+      <div class="card-glow"></div>
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-icon">📋</span> Мои устройства</div>
+        <span class="badge badge-blue">{{ devices|length }} всего</span>
+      </div>
+      {% if devices %}
+      {% for d in devices %}
+      <div class="device-item" style="{% if not d.is_active %}opacity:.5{% endif %}">
+        <div class="device-icon-wrap">
+          {% if d.device_type=='tv' %}📺
+          {% elif d.device_type=='phone' %}📱
+          {% elif d.device_type=='tablet' %}📟
+          {% elif d.device_type=='stb' %}📦
+          {% elif d.device_type=='pc' %}💻
+          {% else %}🔌{% endif %}
+        </div>
+        <div class="device-info">
+          <div class="device-name">{{ d.name or 'Без имени' }}</div>
+          <div class="device-meta">
+            {% if d.mac_address %}
+            <span class="device-mac">{{ d.mac_address }}</span>
+            {% endif %}
+            {% if d.is_active %}
+            <span class="badge badge-green" style="font-size:10px"><span class="badge-dot"></span>Активно</span>
+            {% else %}
+            <span class="badge badge-red" style="font-size:10px"><span class="badge-dot"></span>Отключено</span>
+            {% endif %}
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">
+            Добавлено {{ (d.registered_at or '')[:10] }}
+          </div>
+        </div>
+        <form method="POST" style="flex-shrink:0">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="remove">
+          <input type="hidden" name="device_id" value="{{ d.id }}">
+          <button type="submit" class="btn btn-danger btn-sm"
+                  data-confirm="Удалить устройство «{{ d.name }}»?">
+            Удалить
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">📱</div>
+        <div class="empty-state-text">Устройств пока нет.<br>Добавьте первое выше!</div>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}

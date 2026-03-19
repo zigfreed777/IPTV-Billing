@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Админ{% endblock %} — IPTV Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="/static/css/main.css" rel="stylesheet">
+<style>
+:root { --sb-w:220px; --sb-w-collapsed:60px; --topbar-h:56px; --transition:.28s cubic-bezier(.4,0,.2,1); }
+.admin-body { display:flex; min-height:100vh; background:var(--bg); }
+.app-sidebar { width:var(--sb-w); min-height:100vh; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:200; transition:width var(--transition); overflow:hidden; }
+.app-sidebar.collapsed { width:var(--sb-w-collapsed); }
+.sb-header { display:flex; align-items:center; justify-content:space-between; padding:16px 12px; border-bottom:1px solid var(--border); min-height:60px; flex-shrink:0; }
+.sb-logo { display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--text1); font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; flex:1; min-width:0; }
+.sb-logo-icon { width:28px; height:28px; border-radius:7px; background:linear-gradient(135deg,#dc2626,#991b1b); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.sb-logo-text { opacity:1; transition:opacity var(--transition); overflow:hidden; white-space:nowrap; }
+.app-sidebar.collapsed .sb-logo-text { opacity:0; width:0; }
+.sb-toggle { width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text3); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s; flex-shrink:0; }
+.sb-toggle:hover { background:var(--surface2); color:var(--text1); }
+.sb-toggle svg { transition:transform var(--transition); }
+.app-sidebar.collapsed .sb-toggle svg { transform:rotate(180deg); }
+.sb-nav { flex:1; padding:8px; overflow-y:auto; overflow-x:hidden; }
+.sb-section-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; padding:4px 8px 5px; opacity:1; transition:opacity var(--transition); white-space:nowrap; }
+.app-sidebar.collapsed .sb-section-label { opacity:0; }
+.sb-link { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; color:var(--text2); text-decoration:none; font-size:13px; font-weight:500; transition:.2s; white-space:nowrap; position:relative; margin-bottom:1px; }
+.sb-link:hover { color:var(--text1); background:rgba(255,255,255,.05); }
+.sb-link.active { color:#fff; background:rgba(124,58,237,.18); }
+.sb-link.active::before { content:''; position:absolute; left:0; top:25%; bottom:25%; width:3px; border-radius:0 2px 2px 0; background:linear-gradient(180deg,var(--primary),#3B82F6); }
+.sb-icon { font-size:16px; flex-shrink:0; width:20px; text-align:center; }
+.sb-label { opacity:1; transition:opacity var(--transition); overflow:hidden; }
+.app-sidebar.collapsed .sb-label { opacity:0; width:0; }
+.sl-badge { margin-left:auto; background:rgba(239,68,68,.2); color:#f87171; border-radius:10px; padding:1px 7px; font-size:11px; font-weight:700; }
+.app-sidebar.collapsed .sl-badge { display:none; }
+.app-sidebar.collapsed .sb-link { justify-content:center; padding:8px 0; }
+.app-sidebar.collapsed .sb-link::after { content:attr(data-tooltip); position:absolute; left:calc(var(--sb-w-collapsed) + 6px); background:var(--surface2); border:1px solid var(--border); color:var(--text1); padding:4px 10px; border-radius:7px; font-size:12px; white-space:nowrap; pointer-events:none; opacity:0; transform:translateX(-4px); transition:opacity .15s,transform .15s; z-index:300; }
+.app-sidebar.collapsed .sb-link:hover::after { opacity:1; transform:translateX(0); }
+.sb-footer { padding:6px 8px; border-top:1px solid var(--border); flex-shrink:0; }
+.admin-content { flex:1; margin-left:var(--sb-w); transition:margin-left var(--transition); padding:28px 30px; min-width:0; }
+.admin-body.sb-collapsed .admin-content { margin-left:var(--sb-w-collapsed); }
+.sb-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(3px); z-index:199; opacity:0; transition:opacity .3s; }
+.app-topbar { display:none; position:fixed; top:0; left:0; right:0; height:var(--topbar-h); background:rgba(6,6,18,.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); z-index:300; align-items:center; justify-content:space-between; padding:0 16px; }
+.topbar-burger { width:34px; height:34px; background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:7px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.topbar-burger span { display:block; width:14px; height:2px; background:#fff; border-radius:1px; transition:.3s; }
+.topbar-burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.topbar-burger.open span:nth-child(2){opacity:0}
+.topbar-burger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.topbar-logo { font-weight:800; font-size:15px; color:#fff; text-decoration:none; display:flex; align-items:center; gap:6px; }
+.topbar-logo .ti { width:26px; height:26px; border-radius:6px; background:linear-gradient(135deg,#dc2626,#991b1b); display:flex; align-items:center; justify-content:center; font-size:13px; }
+@media(max-width:991px) {
+  .app-sidebar { transform:translateX(-100%); width:var(--sb-w)!important; box-shadow:4px 0 40px rgba(0,0,0,.5); }
+  .app-sidebar.mobile-open { transform:translateX(0); }
+  .admin-content { margin-left:0!important; padding:calc(var(--topbar-h) + 20px) 16px 24px; }
+  .app-topbar { display:flex; }
+  .sb-overlay.visible { display:block; opacity:1; }
+  .sb-toggle { display:none; }
+}
+@media(max-width:575px) { .admin-content { padding:calc(var(--topbar-h) + 12px) 12px 20px; } }
+</style>
+</head>
+<body class="admin-body">
+<aside class="app-sidebar" id="sidebar">
+  <div class="sb-header">
+    <a href="/admin/" class="sb-logo">
+      <div class="sb-logo-icon">🛡</div>
+      <span class="sb-logo-text">Admin Panel</span>
+    </a>
+    <button class="sb-toggle" id="sb-toggle" title="Свернуть">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section-label">Обзор</div>
+    <a href="/admin/"          class="sb-link {% if request.path=='/admin/' %}active{% endif %}"          data-tooltip="Дашборд"><span class="sb-icon">📊</span><span class="sb-label">Дашборд</span></a>
+    <a href="/admin/analytics" class="sb-link {% if 'analytics' in request.path %}active{% endif %}"      data-tooltip="Аналитика"><span class="sb-icon">📈</span><span class="sb-label">Аналитика</span></a>
+    <div class="sb-section-label" style="margin-top:8px">Пользователи</div>
+    <a href="/admin/users"     class="sb-link {% if request.path.startswith('/admin/users') %}active{% endif %}" data-tooltip="Пользователи"><span class="sb-icon">👥</span><span class="sb-label">Пользователи</span></a>
+    <a href="/admin/topups"    class="sb-link {% if 'topups' in request.path %}active{% endif %}"          data-tooltip="Пополнения">
+      <span class="sb-icon">💰</span><span class="sb-label">Пополнения</span>
+      {% if pending_topups %}<span class="sl-badge">{{ pending_topups }}</span>{% endif %}
+    </a>
+    <div class="sb-section-label" style="margin-top:8px">Каталог</div>
+    <a href="/admin/services"    class="sb-link {% if 'services' in request.path %}active{% endif %}"    data-tooltip="Услуги и пакеты"><span class="sb-icon">📦</span><span class="sb-label">Услуги / пакеты</span></a>
+    <a href="/admin/promocodes"  class="sb-link {% if 'promocodes' in request.path %}active{% endif %}"  data-tooltip="Промокоды"><span class="sb-icon">🎟</span><span class="sb-label">Промокоды</span></a>
+    <div class="sb-section-label" style="margin-top:8px">Коммуникации</div>
+    <a href="/admin/chat"           class="sb-link {% if request.path.startswith('/admin/chat') %}active{% endif %}"      data-tooltip="Чат поддержки"><span class="sb-icon">💬</span><span class="sb-label">Чат поддержки</span></a>
+    <a href="/admin/communications" class="sb-link {% if 'communications' in request.path or 'smtp' in request.path or 'broadcasts' in request.path or 'notify' in request.path %}active{% endif %}" data-tooltip="Email и рассылки"><span class="sb-icon">📡</span><span class="sb-label">Email и рассылки</span></a>
+    <div class="sb-section-label" style="margin-top:8px">Настройки</div>
+    <a href="/admin/settings" class="sb-link {% if 'settings' in request.path %}active{% endif %}" data-tooltip="Настройки платформы"><span class="sb-icon">⚙️</span><span class="sb-label">Настройки</span></a>
+  </nav>
+  <div class="sb-footer">
+    <a href="/dashboard" class="sb-link" data-tooltip="Кабинет"><span class="sb-icon">🏠</span><span class="sb-label">Кабинет</span></a>
+    <a href="/logout"    class="sb-link" style="color:#f87171" data-tooltip="Выйти"><span class="sb-icon">🚪</span><span class="sb-label">Выйти</span></a>
+  </div>
+</aside>
+<div class="sb-overlay" id="sb-overlay"></div>
+<header class="app-topbar">
+  <button class="topbar-burger" id="topbar-burger"><span></span><span></span><span></span></button>
+  <a href="/admin/" class="topbar-logo"><div class="ti">🛡</div> Admin</a>
+  <span style="font-size:12px;color:var(--text3)">{{ session.login }}</span>
+</header>
+<main class="admin-content" id="admin-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="margin-bottom:16px;display:flex;flex-direction:column;gap:8px">
+      {% for cat, msg in messages %}
+      <div class="flash {{ cat }}">
+        <span class="flash-icon">{% if cat=='success' %}✓{% elif cat=='error' %}✕{% elif cat=='warning' %}⚠{% else %}ℹ{% endif %}</span>
+        <span class="flash-msg">{{ msg }}</span>
+        <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<script>
+(function(){
+  const SB_KEY = 'admin_sb'
+  const sidebar = document.getElementById('sidebar')
+  const toggle  = document.getElementById('sb-toggle')
+  const body    = document.body
+  const burger  = document.getElementById('topbar-burger')
+  const overlay = document.getElementById('sb-overlay')
+  if (!sidebar) return
+  function setCollapsed(on, save) {
+    sidebar.classList.toggle('collapsed', on)
+    body.classList.toggle('sb-collapsed', on)
+    if (save) localStorage.setItem(SB_KEY, on ? '1' : '0')
+  }
+  if (localStorage.getItem(SB_KEY) === '1') setCollapsed(true, false)
+  if (toggle) toggle.addEventListener('click', () => setCollapsed(!sidebar.classList.contains('collapsed'), true))
+  function openMobile()  { sidebar.classList.add('mobile-open'); overlay.classList.add('visible'); burger&&burger.classList.add('open'); document.body.style.overflow='hidden' }
+  function closeMobile() { sidebar.classList.remove('mobile-open'); overlay.classList.remove('visible'); burger&&burger.classList.remove('open'); document.body.style.overflow='' }
+  if (burger)  burger.addEventListener('click', () => sidebar.classList.contains('mobile-open') ? closeMobile() : openMobile())
+  if (overlay) overlay.addEventListener('click', closeMobile)
+  document.addEventListener('keydown', e => e.key==='Escape' && closeMobile())
+  sidebar.querySelectorAll('.sb-link').forEach(a => a.addEventListener('click', () => { if(window.innerWidth<992) closeMobile() }))
+  // data-confirm
+  document.querySelectorAll('[data-confirm]').forEach(btn =>
+    btn.addEventListener('click', e => { if (!confirm(btn.dataset.confirm)) e.preventDefault() }))
+  // data-copy
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-copy]')
+    if (!el) return
+    const txt = el.dataset.copy || el.textContent.trim()
+    navigator.clipboard?.writeText(txt).then(() => {
+      el.style.outline = '2px solid #6ee7b7'; setTimeout(() => el.style.outline = '', 1500)
+    })
+  })
+  // flash auto-dismiss
+  document.querySelectorAll('.flash').forEach((f, i) =>
+    setTimeout(() => {
+      f.style.transition = 'opacity .4s'; f.style.opacity = '0'
+      setTimeout(() => f.remove(), 400)
+    }, 4500 + i * 300))
+  // progress bars
+  setTimeout(() =>
+    document.querySelectorAll('.progress-bar[data-width]').forEach(b =>
+      b.style.width = b.dataset.width + '%'), 100)
+})()
+</script>
+</body>
+</html>

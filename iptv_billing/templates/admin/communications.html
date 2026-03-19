@@ -1,0 +1,216 @@
+{% extends 'admin/base.html' %}
+{% block title %}Коммуникации{% endblock %}
+{% block content %}
+<div class="page-title animate">📡 Коммуникации</div>
+
+<!-- Tab nav -->
+<div style="display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;overflow-x:auto">
+  {% for tid, ticon, tlabel in [('smtp','📧','Email / SMTP'),('broadcasts','📨','Рассылки'),('notify','🔔','Уведомления')] %}
+  <a href="?tab={{ tid }}"
+     style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;
+       font-weight:{% if tab==tid %}700{% else %}500{% endif %};
+       background:{% if tab==tid %}rgba(124,58,237,.2){% else %}transparent{% endif %};
+       color:{% if tab==tid %}#a78bfa{% else %}var(--text2){% endif %};
+       text-decoration:none;white-space:nowrap;
+       border:1px solid {% if tab==tid %}rgba(124,58,237,.3){% else %}transparent{% endif %}">
+    {{ ticon }} {{ tlabel }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- ─── SMTP ─────────────────────────────────────────────────────────────── -->
+{% if tab == 'smtp' %}
+<div class="grid grid-2">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">⚙️</span> Параметры сервера</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="save_smtp">
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="enabled" class="toggle-input" {% if not cfg or cfg.enabled %}checked{% endif %}>
+          <div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          Включить отправку email
+        </label>
+      </div>
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group"><label class="form-label">SMTP сервер</label>
+          <input type="text" name="host" value="{{ cfg.host if cfg else 'smtp.yandex.ru' }}"></div>
+        <div class="form-group"><label class="form-label">Порт</label>
+          <select name="port">
+            <option value="465" {% if cfg and cfg.port==465 %}selected{% endif %}>465 — SSL (рекомендуется)</option>
+            <option value="587" {% if cfg and cfg.port==587 %}selected{% endif %}>587 — STARTTLS</option>
+          </select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Email (логин)</label>
+        <input type="email" name="user" value="{{ cfg.user if cfg else '' }}" placeholder="noreply@yandex.ru"></div>
+      <div class="form-group"><label class="form-label">Пароль приложения</label>
+        <div style="position:relative">
+          <input type="password" name="password" id="smtp-pass" placeholder="Оставьте пустым чтобы не менять" autocomplete="new-password">
+          <button type="button" onclick="document.getElementById('smtp-pass').type=document.getElementById('smtp-pass').type==='password'?'text':'password'"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer">👁</button>
+        </div>
+        <div class="form-hint">Для Yandex: Настройки аккаунта → Безопасность → Пароли приложений</div>
+      </div>
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group"><label class="form-label">Имя отправителя</label>
+          <input type="text" name="from_name" value="{{ cfg.from_name if cfg else 'IPTV Billing' }}" maxlength="60"></div>
+        <div class="form-group"><label class="form-label">URL сайта</label>
+          <input type="url" name="site_url" value="{{ cfg.site_url if cfg else 'http://localhost:5003' }}">
+          <div class="form-hint">Используется в ссылках писем</div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">💾 Сохранить</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">🧪</span> Тест отправки</div></div>
+    {% if test_result %}
+    <div class="flash {{ test_result[0] }}" style="margin-bottom:14px">
+      <span class="flash-icon">{% if test_result[0]=='success' %}✓{% else %}✕{% endif %}</span>
+      <span>{{ test_result[1] }}</span>
+    </div>
+    {% endif %}
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="test_smtp">
+      <div class="form-group"><label class="form-label">Тестовый адрес</label>
+        <input type="email" name="test_to" placeholder="your@email.com" required></div>
+      <button type="submit" class="btn btn-secondary btn-full">📨 Отправить тест</button>
+    </form>
+    <div style="margin-top:14px;padding:12px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.7">
+      <b>Yandex:</b> smtp.yandex.ru · порт 465<br>
+      <b>Gmail:</b> smtp.gmail.com · порт 465<br>
+      <b>Mail.ru:</b> smtp.mail.ru · порт 465<br><br>
+      <span style="color:#fbbf24">⚠ При timeout</span> — попробуйте порт 465 вместо 587
+    </div>
+    {% if cfg and cfg.updated_at %}<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">Обновлено: {{ cfg.updated_at[:16] }}</div>{% endif %}
+  </div>
+</div>
+
+<!-- ─── BROADCASTS ──────────────────────────────────────────────────────── -->
+{% elif tab == 'broadcasts' %}
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">✏️</span> Новая рассылка</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="create_broadcast">
+      <div class="form-group"><label class="form-label">Тема письма</label>
+        <input type="text" name="subject" placeholder="Важное сообщение" maxlength="200" required></div>
+      <div class="form-group"><label class="form-label">Фильтр получателей</label>
+        <select name="filter_type" id="bc-filter">
+          <option value="all">Все активные пользователи</option>
+          <option value="subscribed">С активными пакетами</option>
+          <option value="expired">Без пакетов</option>
+          <option value="trial">Пробный период</option>
+          <option value="no_payment">Ни разу не платили</option>
+          <option value="tariff">По услуге (ID)</option>
+        </select></div>
+      <div class="form-group" id="bc-filter-val-wrap" style="display:none">
+        <label class="form-label">ID услуги</label>
+        <input type="text" name="filter_value" placeholder="1">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkBcCount()">🔍 Подсчитать</button>
+        <span id="bc-count" style="font-size:13px;color:var(--text2);align-self:center"></span>
+      </div>
+      <div class="form-group"><label class="form-label">HTML текст</label>
+        <textarea name="body_html" rows="7" placeholder="<h3>Заголовок</h3><p>Текст...</p>" required></textarea></div>
+      <button type="submit" class="btn btn-primary btn-full">Создать черновик →</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">📋</span> История рассылок</div></div>
+    {% if broadcasts %}
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Тема</th><th>Фильтр</th><th>Отправлено</th><th>Статус</th><th></th></tr></thead>
+      <tbody>
+      {% for b in broadcasts %}
+      <tr>
+        <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.subject }}</td>
+        <td style="font-size:11px;color:var(--text3)">{{ b.filter_type }}</td>
+        <td class="tbl-mono" style="font-size:12px">{{ b.sent_count }}</td>
+        <td>{% if b.status=='sent' %}<span class="badge badge-green">Отправлена</span>
+            {% else %}<span class="badge badge-yellow">Черновик</span>{% endif %}</td>
+        <td><a href="/admin/broadcasts/{{ b.id }}" class="btn btn-ghost btn-xs">→</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-icon">📨</div><div class="empty-state-text">Рассылок нет</div></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ─── NOTIFICATIONS ───────────────────────────────────────────────────── -->
+{% elif tab == 'notify' %}
+<div class="grid grid-2">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">⚙️</span> Параметры</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="save_notify">
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap"><input type="checkbox" name="notify_enabled" class="toggle-input" {% if notify_cfg and notify_cfg.enabled %}checked{% endif %}>
+          <div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+          Включить уведомления о низком балансе
+        </label>
+      </div>
+      <div class="form-group"><label class="form-label">За сколько дней предупреждать</label>
+        <input type="text" name="notif_days_before" value="{{ notify_cfg.days_before if notify_cfg else '7,3,1' }}">
+        <div class="form-hint">Через запятую: 7,3,1 — за 7, 3 и 1 день</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Сохранить</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">📋</span> Журнал уведомлений</div></div>
+    {% if notify_log %}
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Пользователь</th><th>Тип</th><th>Дней</th><th>Дата</th></tr></thead>
+      <tbody>
+      {% for n in notify_log %}
+      <tr>
+        <td><a href="/admin/users/{{ n.user_id }}" style="color:var(--primary-light)">{{ n.login }}</a></td>
+        <td style="font-size:12px">
+          {% if n.type=='low_balance' %}<span class="badge badge-yellow">Баланс</span>
+          {% elif n.type=='auto_renewed' %}<span class="badge badge-green">Продление</span>
+          {% else %}<span class="badge badge-purple">{{ n.type }}</span>{% endif %}
+        </td>
+        <td class="tbl-mono">{{ n.days_before or '—' }}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (n.sent_at or '')[:16] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-text">Уведомлений не отправлялось</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+const csrf = '{{ csrf }}'
+document.getElementById('bc-filter')?.addEventListener('change', function(){
+  document.getElementById('bc-filter-val-wrap').style.display = this.value==='tariff'?'':'none'
+})
+async function checkBcCount(){
+  const ft = document.getElementById('bc-filter').value
+  const fv = document.querySelector('[name="filter_value"]')?.value||''
+  const fd = new FormData(); fd.append('_csrf',csrf); fd.append('filter_type',ft); fd.append('filter_value',fv)
+  const r  = await fetch('/admin/broadcasts/preview-count',{method:'POST',body:fd})
+  const d  = await r.json()
+  document.getElementById('bc-count').textContent = `👥 Получателей: ${d.count}`
+}
+</script>
+{% endblock %}

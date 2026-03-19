@@ -1,0 +1,48 @@
+{% extends 'admin/base.html' %}
+{% block title %}Чат поддержки{% endblock %}
+{% block content %}
+<div class="page-title animate">💬 Чат поддержки</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">📢 Массовая рассылка в чат</div></div>
+    <form method="POST" action="/admin/chat/broadcast">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="form-group">
+        <label class="form-label">Фильтр получателей</label>
+        <select name="filter">
+          <option value="all">Все подтверждённые пользователи</option>
+          <option value="active">Только с активными пакетами</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Сообщение</label>
+        <textarea name="body" rows="4" maxlength="2000" placeholder="Текст оповещения..." required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full"
+              data-confirm="Отправить сообщение всем выбранным пользователям?">📨 Отправить всем</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">📋 Диалоги</div></div>
+    {% if threads %}
+    {% for t in threads %}
+    <a href="/admin/chat/{{ t.id }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3B82F6);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0">{{ t.login[0]|upper }}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:{% if t.unread %}700{% else %}500{% endif %}">{{ t.login }}</span>
+          <span style="font-size:11px;color:var(--text3)">{{ (t.last_msg or '')[:10] }}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.preview or '—' }}</div>
+      </div>
+      {% if t.unread %}<span class="badge badge-red">{{ t.unread }}</span>{% endif %}
+    </a>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-text">Нет сообщений</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

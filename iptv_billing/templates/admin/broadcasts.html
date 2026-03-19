@@ -1,0 +1,89 @@
+{% extends 'admin/base.html' %}
+{% block title %}Рассылки{% endblock %}
+{% block content %}
+<div class="page-title animate">📨 Рассылки</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">✏️ Новая рассылка</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="create">
+      <div class="form-group">
+        <label class="form-label">Тема письма</label>
+        <input type="text" name="subject" placeholder="Новые тарифы 2026!" maxlength="200" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Фильтр получателей</label>
+        <select name="filter_type" id="filter-type" onchange="updateFilterValue()">
+          <option value="all">Все подтверждённые (с news=1)</option>
+          <option value="subscribed">Только с активной подпиской</option>
+          <option value="expired">Без активной подписки</option>
+          <option value="trial">Использовали пробный период</option>
+          <option value="no_payment">Ни разу не платили</option>
+          <option value="tariff">По тарифу</option>
+        </select>
+      </div>
+      <div class="form-group" id="filter-value-wrap" style="display:none">
+        <label class="form-label">ID тарифа</label>
+        <input type="text" name="filter_value" placeholder="1">
+      </div>
+      <div id="recipient-count" style="padding:8px 12px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:8px;font-size:13px;margin-bottom:12px;color:#a5b4fc">
+        Нажмите «Проверить» для подсчёта получателей
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkCount()">🔍 Проверить кол-во</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">HTML текст письма</label>
+        <textarea name="body_html" rows="8" placeholder='<h3 style="color:#a78bfa">Заголовок</h3>&#10;<p>Текст рассылки...</p>&#10;<a href="https://yourdomain.com/dashboard">Кнопка</a>' required></textarea>
+        <div class="form-hint">Используйте inline-стили. Переменные: не поддерживаются — текст одинаков для всех.</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Создать черновик →</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">📋 История рассылок</div></div>
+    {% if broadcasts %}
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Тема</th><th>Фильтр</th><th>Отправлено</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+        {% for b in broadcasts %}
+        <tr>
+          <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.subject }}</td>
+          <td style="font-size:11px;color:var(--text2)">{{ b.filter_type }}</td>
+          <td class="tbl-mono" style="font-size:11px">{{ b.sent_count }}</td>
+          <td>{% if b.status=='sent' %}<span class="badge badge-green">Отправлена</span>
+              {% else %}<span class="badge badge-yellow">Черновик</span>{% endif %}</td>
+          <td><a href="/admin/broadcasts/{{ b.id }}" class="btn btn-ghost btn-xs">→</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-icon">📨</div><div class="empty-state-text">Рассылок ещё не было</div></div>
+    {% endif %}
+  </div>
+</div>
+<script>
+const csrf = document.querySelector('[name="_csrf"]').value
+function updateFilterValue(){
+  document.getElementById('filter-value-wrap').style.display =
+    document.getElementById('filter-type').value === 'tariff' ? '' : 'none'
+}
+async function checkCount(){
+  const ft = document.getElementById('filter-type').value
+  const fv = document.querySelector('[name="filter_value"]')?.value || ''
+  const fd = new FormData()
+  fd.append('_csrf', csrf)
+  fd.append('filter_type', ft)
+  fd.append('filter_value', fv)
+  const r = await fetch('/admin/broadcasts/preview-count', {method:'POST', body: fd})
+  const data = await r.json()
+  document.getElementById('recipient-count').textContent = `👥 Получателей: ${data.count}`
+}
+</script>
+{% endblock %}

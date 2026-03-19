@@ -1,0 +1,41 @@
+{% extends 'dash_base.html' %}
+{% block title %}История платежей — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-title animate">💳 История платежей</div>
+    <div class="page-subtitle">Все списания за подписки</div>
+    <div class="card animate">
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Тариф</th><th>Сумма</th><th>Способ</th><th>Статус</th><th>Дата</th></tr></thead>
+          <tbody>
+          {% for p in payments %}
+          <tr>
+            <td class="tbl-mono" style="color:var(--text3)">{{ p.id }}</td>
+            <td style="font-weight:500">{{ p.tariff_name or '—' }}</td>
+            <td style="font-weight:700;color:#c4b5fd">{{ p.amount|round(2) }} ₽</td>
+            <td style="color:var(--text2)">{{ p.payment_method or 'balance' }}</td>
+            <td>
+              {% if p.status=='completed' %}<span class="badge badge-green"><span class="badge-dot"></span>Оплачен</span>
+              {% elif p.status=='pending' %}<span class="badge badge-yellow"><span class="badge-dot"></span>Ожидание</span>
+              {% else %}<span class="badge badge-red"><span class="badge-dot"></span>Ошибка</span>{% endif %}
+            </td>
+            <td class="tbl-mono" style="font-size:12px">{{ (p.created_at or '')[:16] }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if not payments %}
+      <div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-text">Платежей пока нет</div></div>
+      {% endif %}
+      {% if pages > 1 %}
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:16px">
+        {% for p in range(1, pages+1) %}
+        <a href="?page={{ p }}" class="btn {% if p==page %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">{{ p }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}

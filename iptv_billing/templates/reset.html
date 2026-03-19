@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Новый пароль — IPTV Billing{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card animate">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">🔑</div>
+      <h1>Новый пароль</h1>
+      <p>Введите и подтвердите новый пароль</p>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="form-group">
+        <label class="form-label">Новый пароль</label>
+        <div class="input-wrap has-icon">
+          <span class="input-icon">🔒</span>
+          <input type="password" name="password" placeholder="Минимум 6 символов"
+                 required autocomplete="new-password">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Повторите пароль</label>
+        <div class="input-wrap has-icon">
+          <span class="input-icon">🔒</span>
+          <input type="password" name="confirm" placeholder="Повторите пароль"
+                 required autocomplete="new-password">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Сохранить пароль</button>
+    </form>
+    <div class="auth-footer" style="margin-top:16px">
+      <a href="/login">← Назад к входу</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

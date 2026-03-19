@@ -1,0 +1,130 @@
+{% extends 'admin/base.html' %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+  <div>
+    <div class="page-title" style="margin:0">👥 Пользователи</div>
+    <div style="font-size:13px;color:var(--text3)">Всего: {{ total }}</div>
+  </div>
+</div>
+
+<!-- Search + filters -->
+<div class="card animate" style="margin-bottom:16px">
+  <div class="card-glow"></div>
+  <form method="GET" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <input type="text" name="q" value="{{ q }}" placeholder="Поиск по логину или email..."
+           style="flex:1;min-width:200px" autocomplete="off">
+    <select name="filter" onchange="this.form.submit()" style="min-width:170px">
+      <option value="" {% if not filt %}selected{% endif %}>Все пользователи</option>
+      <option value="active"       {% if filt=='active' %}selected{% endif %}>✅ Активная подписка</option>
+      <option value="expired"      {% if filt=='expired' %}selected{% endif %}>⏰ Без подписки</option>
+      <option value="blocked"      {% if filt=='blocked' %}selected{% endif %}>🚫 Заблокированные</option>
+      <option value="unconfirmed"  {% if filt=='unconfirmed' %}selected{% endif %}>⚠ Не подтверждены</option>
+      <option value="trial"        {% if filt=='trial' %}selected{% endif %}>🎁 Пробный период</option>
+      <option value="news_off"     {% if filt=='news_off' %}selected{% endif %}>🔕 Отписаны от рассылки</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Поиск</button>
+    {% if q or filt %}<a href="/admin/users" class="btn btn-ghost btn-sm">✕ Сбросить</a>{% endif %}
+  </form>
+</div>
+
+<!-- Users table -->
+<div class="card animate">
+  <div class="card-glow"></div>
+  {% if users %}
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Пользователь</th>
+          <th>Баланс</th>
+          <th>Пакеты</th>
+          <th>Статус</th>
+          <th>Дата рег.</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">{{ u.login[0]|upper }}</div>
+            <div>
+              <div style="font-weight:600;font-size:14px">
+                <a href="/admin/users/{{ u.id }}" style="color:var(--primary-light);text-decoration:none">{{ u.login }}</a>
+              </div>
+              <div style="font-size:11px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ u.email }}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span style="font-weight:700;font-size:14px;color:{% if u.balance < 100 %}#f87171{% elif u.balance < 500 %}#fbbf24{% else %}#6ee7b7{% endif %}">
+            {{ u.balance|round(0)|int }} ₽
+          </span>
+        </td>
+        <td>
+          {% set pkg_count = namespace(n=0) %}
+          {# We can show pkg count if passed, else just link #}
+          <a href="/admin/users/{{ u.id }}#pkgs" style="color:var(--text2);font-size:12px;text-decoration:none">
+            Подробнее →
+          </a>
+        </td>
+        <td>
+          {% if u.is_blocked %}
+            <span class="badge badge-red"><span class="badge-dot"></span>Заблокирован</span>
+          {% elif not u.email_confirmed %}
+            <span class="badge badge-yellow"><span class="badge-dot"></span>Не подтверждён</span>
+          {% else %}
+            <span class="badge badge-green"><span class="badge-dot"></span>Активен</span>
+          {% endif %}
+        </td>
+        <td class="tbl-mono" style="font-size:11px;color:var(--text3)">{{ (u.registered_at or '')[:10] }}</td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center">
+            <a href="/admin/users/{{ u.id }}" class="btn btn-ghost btn-xs" title="Профиль">👤</a>
+            <a href="/admin/chat/{{ u.id }}" class="btn btn-ghost btn-xs" title="Чат">💬</a>
+            {% if u.is_blocked %}
+            <form method="POST" action="/admin/users/{{ u.id }}" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="action" value="unblock">
+              <button class="btn btn-secondary btn-xs" title="Разблокировать">✅</button>
+            </form>
+            {% else %}
+            <form method="POST" action="/admin/users/{{ u.id }}" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="action" value="block">
+              <input type="hidden" name="reason" value="Заблокировано администратором">
+              <button class="btn btn-danger btn-xs" title="Заблокировать"
+                      data-confirm="Заблокировать {{ u.login }}?">🚫</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- Pagination -->
+  {% if pages > 1 %}
+  <div style="display:flex;justify-content:center;gap:4px;margin-top:16px;flex-wrap:wrap">
+    {% for p in range(1, pages+1) %}
+    <a href="?q={{ q }}&filter={{ filt }}&page={{ p }}"
+       style="padding:6px 12px;border-radius:7px;font-size:13px;font-weight:{% if p==page %}700{% else %}400{% endif %};
+         background:{% if p==page %}rgba(124,58,237,.2){% else %}var(--surface3){% endif %};
+         border:1px solid {% if p==page %}rgba(124,58,237,.3){% else %}var(--border){% endif %};
+         color:{% if p==page %}#a78bfa{% else %}var(--text2){% endif %};text-decoration:none">
+      {{ p }}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">👥</div>
+    <div class="empty-state-text">{% if q %}Ничего не найдено{% else %}Нет пользователей{% endif %}</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block content %}
+<aside class="app-sidebar" id="sidebar">
+  <div class="sb-header">
+    <a href="/dashboard" class="sb-logo">
+      <div class="sb-logo-icon">📺</div>
+      <span class="sb-logo-text"><span style="background:linear-gradient(135deg,#a78bfa,#3B82F6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">IPTV</span> Billing</span>
+    </a>
+    <button class="sb-toggle" id="sb-toggle" title="Свернуть меню">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+  </div>
+  <div class="sb-user">
+    <div class="sb-avatar">{{ (session.login or 'U')[0]|upper }}</div>
+    <div class="sb-user-info">
+      <div class="sb-username">{{ session.login }}</div>
+      <div class="sb-userbadge"><span class="sb-status-dot"></span><span class="sb-status-text">Кабинет</span></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section-label">Кабинет</div>
+    <a href="/dashboard"           class="sb-link {% if request.path=='/dashboard' %}active{% endif %}" data-tooltip="Обзор"><span class="sb-icon">🏠</span><span class="sb-label">Обзор</span></a>
+    <a href="/dashboard/services"  class="sb-link {% if 'services' in request.path or 'package' in request.path %}active{% endif %}" data-tooltip="Услуги"><span class="sb-icon">📦</span><span class="sb-label">Услуги</span></a>
+    <a href="/dashboard/finances"  class="sb-link {% if 'finances' in request.path %}active{% endif %}" data-tooltip="Финансы"><span class="sb-icon">💳</span><span class="sb-label">Финансы</span></a>
+    {% if S.get("cab_show_media","1") == "1" %}
+    <a href="/dashboard/media"     class="sb-link {% if 'media' in request.path %}active{% endif %}" data-tooltip="Медиа"><span class="sb-icon">📡</span><span class="sb-label">Медиа</span></a>
+    {% endif %}
+    <a href="/dashboard/profile"   class="sb-link {% if 'profile' in request.path %}active{% endif %}" data-tooltip="Профиль"><span class="sb-icon">👤</span><span class="sb-label">Профиль</span></a>
+    {% if S.get("cab_show_chat","1") == "1" %}
+    <a href="/dashboard/chat"      class="sb-link {% if 'chat' in request.path %}active{% endif %}" data-tooltip="Чат">
+      <span class="sb-icon">💬</span><span class="sb-label">Поддержка</span>
+      {% set unread = unread_chat if unread_chat is defined else 0 %}
+      {% if unread %}<span class="sb-badge-dot"></span>{% endif %}
+    </a>
+    {% endif %}
+    {% if session.login in ['admin'] %}
+    <div class="sb-section-label" style="margin-top:8px">Администрирование</div>
+    <a href="/admin/" class="sb-link" data-tooltip="Админ-панель"><span class="sb-icon">🛡</span><span class="sb-label">Панель Admin</span></a>
+    {% endif %}
+  </nav>
+  <div class="sb-footer">
+    <a href="/"       class="sb-link" data-tooltip="На сайт"><span class="sb-icon">🌐</span><span class="sb-label">На сайт</span></a>
+    <a href="/logout" class="sb-link sb-logout" data-tooltip="Выйти"><span class="sb-icon">🚪</span><span class="sb-label">Выйти</span></a>
+  </div>
+</aside>
+<div class="sb-overlay" id="sb-overlay"></div>
+<header class="app-topbar">
+  <button class="topbar-burger" id="topbar-burger"><span></span><span></span><span></span></button>
+  <a href="/dashboard" class="topbar-logo">📺 <span>IPTV</span> Billing</a>
+  <a href="/dashboard/profile" class="topbar-avatar">{{ (session.login or 'U')[0]|upper }}</a>
+</header>
+<div class="app-content" id="app-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-wrap">
+      {% for cat, msg in messages %}
+      <div class="flash {{ cat }}">
+        <span class="flash-icon">{% if cat=='success' %}✓{% elif cat=='error' %}✕{% elif cat=='warning' %}⚠{% else %}ℹ{% endif %}</span>
+        <span class="flash-msg">{{ msg }}</span>
+        <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  {% block page_content %}{% endblock %}
+</div>
+{% endblock %}

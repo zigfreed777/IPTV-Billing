@@ -1,0 +1,58 @@
+{% extends 'admin/base.html' %}
+{% block title %}Пополнения{% endblock %}
+{% block content %}
+{% set pending_topups = topups|length %}
+<div class="page-title animate">💰 Ожидающие пополнения</div>
+<div class="page-subtitle">{{ topups|length }} запросов требуют обработки</div>
+{% if topups %}
+<div class="card animate">
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Пользователь</th><th>Сумма</th><th>Способ</th><th>Создан</th><th>Действия</th></tr></thead>
+      <tbody>
+      {% for t in topups %}
+      <tr>
+        <td class="tbl-mono" style="color:var(--text3)">{{ t.id }}</td>
+        <td>
+          <a href="/admin/users/{{ t.user_id }}" style="color:var(--primary-light);font-weight:600">{{ t.login }}</a>
+          <div style="font-size:11px;color:var(--text3)">{{ t.email }}</div>
+        </td>
+        <td style="font-size:18px;font-weight:700;color:#c4b5fd">{{ t.amount|int }} ₽</td>
+        <td>
+          {% if t.method=='card' %}💳 Карта
+          {% elif t.method=='crypto' %}₿ Крипто
+          {% elif t.method=='transfer' %}🏦 Перевод
+          {% else %}{{ t.method }}{% endif %}
+        </td>
+        <td class="tbl-mono" style="font-size:12px">{{ (t.created_at or '')[:16] }}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <form method="POST" action="/admin/topups/{{ t.id }}/confirm">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <button type="submit" class="btn btn-success btn-sm"
+                      data-confirm="Подтвердить пополнение {{ t.amount|int }} ₽ для {{ t.login }}?">
+                ✓ Подтвердить
+              </button>
+            </form>
+            <form method="POST" action="/admin/topups/{{ t.id }}/reject">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <button type="submit" class="btn btn-danger btn-sm"
+                      data-confirm="Отклонить пополнение?">✕ Отклонить</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card animate">
+  <div class="empty-state">
+    <div class="empty-state-icon">✅</div>
+    <div class="empty-state-text">Нет ожидающих пополнений</div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

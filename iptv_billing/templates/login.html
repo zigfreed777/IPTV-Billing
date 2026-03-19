@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Вход — IPTV Billing{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card animate">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">📺</div>
+      <h1>IPTV Billing</h1>
+      <p>Войдите в личный кабинет</p>
+    </div>
+    <form method="POST" autocomplete="on">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="form-group">
+        <label class="form-label">Логин или Email</label>
+        <div class="input-wrap has-icon">
+          <span class="input-icon">👤</span>
+          <input type="text" name="login" placeholder="user или user@mail.com"
+                 required autocomplete="username">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль</label>
+        <div class="input-wrap has-icon">
+          <span class="input-icon">🔒</span>
+          <input type="password" name="password" placeholder="••••••••"
+                 required autocomplete="current-password">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:4px">
+        Войти в кабинет
+      </button>
+    </form>
+    <div class="or-divider">или</div>
+    <a href="/register" class="btn btn-secondary btn-full">Создать аккаунт</a>
+    <div class="auth-footer" style="margin-top:16px">
+      <a href="/forgot">Забыли пароль?</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

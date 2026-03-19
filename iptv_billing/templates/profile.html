@@ -1,0 +1,156 @@
+{% extends 'dash_base.html' %}
+{% block title %}Профиль — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-header animate">
+  <div class="page-header-inner">
+    <div>
+      <h1>👤 Профиль</h1>
+      <p class="subtitle">Личные данные, безопасность и настройки</p>
+    </div>
+  </div>
+</div>
+
+<!-- Avatar + quick info -->
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding:20px;background:var(--surface2);border:1px solid var(--border);border-radius:16px" class="animate">
+  <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;flex-shrink:0;box-shadow:0 6px 20px rgba(124,58,237,.35)">{{ user.login[0]|upper }}</div>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:20px;font-weight:800;letter-spacing:-.02em">{{ user.login }}</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:2px">{{ user.email }}
+      {% if user.email_confirmed %}<span style="color:#6ee7b7;font-size:11px;margin-left:6px">✓ подтверждён</span>
+      {% else %}<span style="color:#fbbf24;font-size:11px;margin-left:6px">⚠ не подтверждён</span>{% endif %}
+    </div>
+    <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
+      {% if user.phone %}<span style="font-size:12px;color:var(--text3)">📱 {{ user.phone }}</span>{% endif %}
+      {% if user.birthdate %}<span style="font-size:12px;color:var(--text3)">🎂 {{ user.birthdate }}</span>{% endif %}
+      <span style="font-size:12px;color:var(--text3)">📅 с {{ (user.registered_at or '')[:10] }}</span>
+    </div>
+  </div>
+  <div style="text-align:right;flex-shrink:0">
+    <div style="font-size:22px;font-weight:800;color:var(--primary-light)">{{ user.balance|round(2) }} ₽</div>
+    <div style="font-size:11px;color:var(--text3)">баланс</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  <!-- Personal info -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">📝</span> Личные данные</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="update_info">
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label">Телефон</label>
+          <input type="tel" name="phone" value="{{ user.phone or '' }}" placeholder="+7 999 000-00-00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Дата рождения</label>
+          <input type="date" name="birthdate" value="{{ user.birthdate or '' }}">
+        </div>
+      </div>
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label">Часовой пояс</label>
+          <select name="timezone">
+            {% for tz in ['UTC','Europe/Moscow','Europe/Kiev','Europe/Minsk','Asia/Almaty','Asia/Tashkent','Asia/Yekaterinburg'] %}
+            <option value="{{ tz }}" {% if user.timezone==tz %}selected{% endif %}>{{ tz.replace('/','\u2009/\u2009') }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Язык</label>
+          <select name="language">
+            <option value="ru" {% if user.language=='ru' %}selected{% endif %}>🇷🇺 Русский</option>
+            <option value="en" {% if user.language=='en' %}selected{% endif %}>🇬🇧 English</option>
+            <option value="uk" {% if user.language=='uk' %}selected{% endif %}>🇺🇦 Українська</option>
+          </select>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;display:flex;flex-direction:column;gap:10px">
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400">
+          <div class="toggle-wrap">
+            <input type="checkbox" name="email_news" class="toggle-input" {% if user.email_news %}checked{% endif %}>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </div>
+          Получать новостные рассылки
+        </label>
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400">
+          <div class="toggle-wrap">
+            <input type="checkbox" name="auto_renew" class="toggle-input" {% if user.auto_renew %}checked{% endif %}>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </div>
+          Автоматическое продление из баланса
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:14px">💾 Сохранить изменения</button>
+    </form>
+  </div>
+
+  <!-- Security + referrals -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="card animate animate-1">
+      <div class="card-glow"></div>
+      <div class="card-head"><div class="card-title"><span class="card-title-icon">🔒</span> Безопасность</div></div>
+      <form method="POST">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="change_password">
+        <div class="form-group">
+          <label class="form-label">Текущий пароль</label>
+          <input type="password" name="old_password" autocomplete="current-password" placeholder="••••••">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Новый пароль</label>
+          <input type="password" name="new_password" id="password" autocomplete="new-password" placeholder="Минимум 6 символов">
+          <div class="pwd-meter"><div class="pwd-meter-bar"></div></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Подтверждение</label>
+          <input type="password" name="confirm_password" autocomplete="new-password" placeholder="Повторите пароль">
+        </div>
+        <button type="submit" class="btn btn-secondary btn-full">🔑 Изменить пароль</button>
+      </form>
+    </div>
+    <div class="card animate animate-2">
+      <div class="card-glow"></div>
+      <div class="card-head">
+        <div class="card-title"><span class="card-title-icon">🎁</span> Реферальная программа</div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Ваш реферальный код:</div>
+      <div class="copy-field" style="margin-bottom:10px">
+        <code>{{ user.referral_code }}</code>
+        <button class="btn btn-ghost btn-xs" data-copy="{{ user.referral_code }}">Копировать</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Ссылка для приглашения:</div>
+      <div class="copy-field">
+        <code>/register?ref={{ user.referral_code }}</code>
+        <button class="btn btn-ghost btn-xs" data-copy="/register?ref={{ user.referral_code }}">Копировать</button>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px">Поделитесь ссылкой — друзья получат пробный период, а вы бонусы 🎁</p>
+    </div>
+  </div>
+</div>
+
+<!-- Activity log -->
+{% if audit %}
+<div class="card animate">
+  <div class="card-glow"></div>
+  <div class="card-head"><div class="card-title"><span class="card-title-icon">📋</span> Журнал активности</div></div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Действие</th><th>Детали</th><th>IP</th><th>Дата</th></tr></thead>
+      <tbody>
+      {% for a in audit %}
+      <tr>
+        <td style="font-weight:500">{{ a.action }}</td>
+        <td style="color:var(--text3);font-size:12px">{{ a.details or '—' }}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ a.ip or '—' }}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (a.created_at or '')[:16] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

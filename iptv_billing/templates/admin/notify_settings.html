@@ -1,0 +1,74 @@
+{% extends 'admin/base.html' %}
+{% block title %}Настройки уведомлений{% endblock %}
+{% block content %}
+<div class="page-title animate">🔔 Уведомления и пробный период</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">⚙️ Параметры</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div class="toggle-wrap">
+            <input type="checkbox" name="enabled" id="notif-enabled" class="toggle-input"
+                   {% if cfg and cfg.enabled %}checked{% endif %}>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </div>
+          Включить уведомления об истечении подписки
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">За сколько дней предупреждать</label>
+        <input type="text" name="days_before" value="{{ cfg.days_before if cfg else '7,3,1' }}"
+               placeholder="7,3,1">
+        <div class="form-hint">Через запятую: 7,3,1 — за 7, 3 и 1 день до окончания</div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:16px 0;padding-top:16px">
+        <div class="card-title" style="margin-bottom:12px"><span class="card-title-icon">🎁</span> Пробный период</div>
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:12px">
+          <div class="toggle-wrap">
+            <input type="checkbox" name="trial_enabled" class="toggle-input"
+                   {% if cfg and cfg.trial_enabled %}checked{% endif %}>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </div>
+          Давать пробный период новым пользователям
+        </label>
+        <div class="form-group">
+          <label class="form-label">Длительность пробного периода (дней)</label>
+          <input type="number" name="trial_days" value="{{ cfg.trial_days if cfg else 3 }}"
+                 min="0" max="30" placeholder="3">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Сохранить настройки</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">📋 Журнал уведомлений</div></div>
+    {% if notify_log %}
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Пользователь</th><th>Тип</th><th>Дней</th><th>Отправлено</th></tr></thead>
+        <tbody>
+        {% for n in notify_log %}
+        <tr>
+          <td><a href="/admin/users/{{ n.user_id }}" style="color:var(--primary-light)">{{ n.login }}</a></td>
+          <td style="font-size:12px">
+            {% if n.type == 'expiring' %}<span class="badge badge-yellow">Истечение</span>
+            {% elif n.type == 'auto_renewed' %}<span class="badge badge-green">Автопродл.</span>
+            {% else %}<span class="badge badge-purple">{{ n.type }}</span>{% endif %}
+          </td>
+          <td class="tbl-mono">{{ n.days_before or '—' }}</td>
+          <td class="tbl-mono" style="font-size:11px">{{ (n.sent_at or '')[:16] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Уведомлений ещё не отправлялось</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends 'admin/base.html' %}
+{% block title %}Аналитика{% endblock %}
+{% block content %}
+<div class="page-title animate">📈 Аналитика</div>
+<div class="page-subtitle">Данные за последние 30 дней</div>
+<!-- FUNNEL -->
+<div class="card animate" style="margin-bottom:16px">
+  <div class="card-glow"></div>
+  <div class="card-head"><div class="card-title"><span class="card-title-icon">🔻</span> Воронка конверсии</div></div>
+  <div style="display:flex;gap:0;align-items:stretch">
+    {% set steps = [
+      ('Зарегистрировались', funnel.registered, '#6366f1'),
+      ('Подтвердили email', funnel.confirmed, '#8b5cf6'),
+      ('Хоть раз платили', funnel.paid, '#a855f7'),
+      ('Активная подписка', funnel.subscribed, '#7C3AED'),
+    ] %}
+    {% for label, val, color in steps %}
+    {% set pct = ((val / funnel.registered * 100)|round(1)) if funnel.registered else 0 %}
+    <div style="flex:1;text-align:center;padding:16px 8px;border-right:1px solid var(--border){% if loop.last %};border-right:none{% endif %}">
+      <div style="font-size:28px;font-weight:800;color:{{ color }}">{{ val }}</div>
+      <div style="font-size:12px;color:var(--text2);margin:4px 0">{{ label }}</div>
+      <div style="font-size:11px;color:var(--text3)">{{ pct }}%</div>
+      <div style="height:4px;background:{{ color }};border-radius:2px;margin-top:8px;opacity:.7;width:{{ pct }}%;margin-left:auto;margin-right:auto"></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <!-- REVENUE CHART -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">💰</span> Выручка по дням</div></div>
+    <canvas id="revenueChart" height="200"></canvas>
+  </div>
+  <!-- REGISTRATIONS CHART -->
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">👥</span> Регистрации по дням</div></div>
+    <canvas id="regChart" height="200"></canvas>
+  </div>
+</div>
+<div class="grid grid-2">
+  <!-- TARIFF DISTRIBUTION -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">💎</span> По тарифам</div></div>
+    <canvas id="tariffChart" height="220"></canvas>
+  </div>
+  <!-- TOPUP METHODS -->
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">💳</span> Способы пополнения</div></div>
+    {% if topup_stats %}
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Способ</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+        <tbody>
+        {% for r in topup_stats %}
+        <tr>
+          <td>{% if r.method=='card' %}💳 Карта{% elif r.method=='crypto' %}₿ Крипто{% elif r.method=='admin' %}🛡 Admin{% else %}🏦 {{ r.method }}{% endif %}</td>
+          <td class="tbl-mono">{{ r.cnt }}</td>
+          <td style="color:#c4b5fd;font-weight:600">{{ r.total|int }} ₽</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-text">Пополнений ещё не было</div></div>
+    {% endif %}
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const chartDefaults = {
+  color: '#94a3b8',
+  borderColor: 'rgba(148,163,184,.15)',
+  plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Outfit' } } } },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { family: 'Outfit', size: 11 } }, grid: { color: 'rgba(148,163,184,.08)' } },
+    y: { ticks: { color: '#64748b', font: { family: 'Outfit', size: 11 } }, grid: { color: 'rgba(148,163,184,.08)' } }
+  }
+}
+const revData  = {{ revenue_daily | tojson }}
+const regData  = {{ reg_daily | tojson }}
+const tarData  = {{ tariff_stats | tojson }}
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: {
+    labels: revData.map(r => r.d),
+    datasets: [{ label: 'Выручка ₽', data: revData.map(r => r.total),
+      borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.1)',
+      fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#a78bfa' }]
+  },
+  options: { ...chartDefaults, responsive: true }
+})
+new Chart(document.getElementById('regChart'), {
+  type: 'bar',
+  data: {
+    labels: regData.map(r => r.d),
+    datasets: [{ label: 'Регистрации', data: regData.map(r => r.cnt),
+      backgroundColor: 'rgba(99,102,241,.6)', borderColor: '#6366f1',
+      borderWidth: 1, borderRadius: 4 }]
+  },
+  options: { ...chartDefaults, responsive: true }
+})
+new Chart(document.getElementById('tariffChart'), {
+  type: 'doughnut',
+  data: {
+    labels: tarData.map(t => t.name),
+    datasets: [{ data: tarData.map(t => t.cnt),
+      backgroundColor: ['#6366f1','#8b5cf6','#a855f7','#7C3AED','#4f46e5'],
+      borderWidth: 2, borderColor: '#1a1a2e' }]
+  },
+  options: { responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'Outfit' } } } } }
+})
+</script>
+{% endblock %}

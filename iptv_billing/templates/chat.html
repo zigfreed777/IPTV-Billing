@@ -1,0 +1,138 @@
+{% extends 'dash_base.html' %}
+{% block title %}Поддержка — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-header animate">
+  <div class="page-header-inner">
+    <div>
+      <h1>💬 Поддержка</h1>
+      <p class="subtitle">Напишите нам — обычно отвечаем в течение нескольких часов</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2);border-radius:10px;font-size:13px;flex-shrink:0">
+      <span class="sb-status-dot"></span>
+      <span style="color:#6ee7b7;font-weight:500">Онлайн-поддержка</span>
+    </div>
+  </div>
+</div>
+
+<div class="card animate" style="display:flex;flex-direction:column;height:calc(100vh - 230px);min-height:480px">
+  <div class="card-glow"></div>
+
+  <!-- Messages -->
+  <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:8px 0 16px;display:flex;flex-direction:column;gap:10px;min-height:0">
+    {% if not messages %}
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;color:var(--text3)">
+      <div style="font-size:56px;margin-bottom:16px;filter:grayscale(20%)">💬</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px">Начните диалог</div>
+      <div style="font-size:14px;max-width:280px;line-height:1.6">Опишите вашу проблему или задайте вопрос — мы ответим как можно скорее</div>
+    </div>
+    {% endif %}
+    {% for m in messages %}
+    <div class="chat-msg {% if m.from_admin %}chat-msg-in{% else %}chat-msg-out{% endif %}"
+         data-id="{{ m.id }}" data-ts="{{ m.created_at }}">
+      {% if m.from_admin %}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:11px">🛡</div>
+        <span style="font-size:11px;color:var(--text3);font-weight:600">Поддержка</span>
+      </div>
+      {% endif %}
+      <div class="chat-bubble">{{ m.body }}</div>
+      <div class="chat-meta">{{ (m.created_at or '')[:16] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Input -->
+  <div style="border-top:1px solid var(--border);padding-top:14px;flex-shrink:0">
+    <form method="POST" id="chat-form" style="display:flex;gap:10px;align-items:flex-end">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div style="flex:1;position:relative">
+        <textarea name="body" id="chat-input" rows="1"
+                  placeholder="Напишите сообщение... (Enter — отправить, Shift+Enter — перенос строки)"
+                  style="width:100%;resize:none;min-height:42px;max-height:140px;padding-right:12px"
+                  maxlength="2000" required></textarea>
+        <div style="font-size:10px;color:var(--text3);position:absolute;right:8px;bottom:8px" id="char-count">0/2000</div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="flex-shrink:0;align-self:flex-end;height:42px"
+              data-noload="1">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+    <div style="font-size:11px;color:var(--text3);margin-top:6px">
+      💡 Средний срок ответа: несколько часов · Токен: <span class="tbl-mono">{{ user.secret_token }}</span>
+    </div>
+  </div>
+</div>
+
+<style>
+.chat-msg{display:flex;flex-direction:column;max-width:75%}
+.chat-msg-in{align-self:flex-start;align-items:flex-start}
+.chat-msg-out{align-self:flex-end;align-items:flex-end}
+.chat-bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;white-space:pre-wrap;max-width:100%}
+.chat-msg-in  .chat-bubble{background:var(--surface3);border:1px solid var(--border);border-bottom-left-radius:4px}
+.chat-msg-out .chat-bubble{background:linear-gradient(135deg,var(--primary),#3B82F6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 4px 12px rgba(124,58,237,.25)}
+.chat-meta{font-size:10px;color:var(--text3);margin-top:4px;padding:0 2px}
+</style>
+
+<script>
+const chatMsgs  = document.getElementById('chat-msgs')
+const chatInput = document.getElementById('chat-input')
+const chatForm  = document.getElementById('chat-form')
+const charCount = document.getElementById('char-count')
+const csrf      = document.querySelector('[name="_csrf"]').value
+
+chatMsgs.scrollTop = chatMsgs.scrollHeight
+
+function lastTs(){
+  const msgs = chatMsgs.querySelectorAll('[data-ts]')
+  return msgs.length ? msgs[msgs.length-1].dataset.ts : '1970-01-01'
+}
+
+function renderMsg(m){
+  const div = document.createElement('div')
+  div.className = 'chat-msg ' + (m.from_admin ? 'chat-msg-in' : 'chat-msg-out')
+  div.dataset.id = m.id; div.dataset.ts = m.created_at
+  const body = m.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')
+  const support = m.from_admin
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+         <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:11px">🛡</div>
+         <span style="font-size:11px;color:var(--text3);font-weight:600">Поддержка</span></div>` : ''
+  div.innerHTML = `${support}<div class="chat-bubble">${body}</div>
+    <div class="chat-meta">${(m.created_at||'').slice(0,16)}</div>`
+  return div
+}
+
+chatForm.addEventListener('submit', async e => {
+  e.preventDefault()
+  const body = chatInput.value.trim()
+  if (!body) return
+  const fd = new FormData(); fd.append('_csrf', csrf); fd.append('body', body)
+  chatInput.value = ''; chatInput.style.height = 'auto'
+  charCount.textContent = '0/2000'
+  await fetch('/dashboard/chat', {method:'POST', body: fd})
+  poll()
+})
+
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto'
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px'
+  charCount.textContent = chatInput.value.length + '/2000'
+})
+chatInput.addEventListener('keydown', e => {
+  if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); chatForm.requestSubmit() }
+})
+
+async function poll(){
+  try{
+    const r = await fetch('/dashboard/chat/poll?after=' + encodeURIComponent(lastTs()))
+    const msgs = await r.json()
+    msgs.forEach(m => {
+      if (!chatMsgs.querySelector(`[data-id="${m.id}"]`)){
+        chatMsgs.appendChild(renderMsg(m))
+      }
+    })
+    if(msgs.length) chatMsgs.scrollTop = chatMsgs.scrollHeight
+  }catch{}
+}
+setInterval(poll, 5000)
+</script>
+{% endblock %}

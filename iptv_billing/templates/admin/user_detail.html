@@ -1,0 +1,185 @@
+{% extends 'admin/base.html' %}
+{% block title %}{{ user.login }}{% endblock %}
+{% block content %}
+<a href="/admin/users" style="color:var(--text3);font-size:13px">← Пользователи</a>
+<div style="display:flex;align-items:center;gap:14px;margin:12px 0 20px">
+  <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800">{{ user.login[0]|upper }}</div>
+  <div>
+    <div class="page-title" style="margin:0">{{ user.login }}</div>
+    <div style="font-size:13px;color:var(--text3)">{{ user.email }}</div>
+  </div>
+  {% if user.is_blocked %}<span class="badge badge-red">Заблокирован</span>
+  {% elif user.email_confirmed %}<span class="badge badge-green">Активен</span>
+  {% else %}<span class="badge badge-yellow">Не подтверждён</span>{% endif %}
+</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <!-- Info + balance -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">👤</span> Информация</div></div>
+    <div class="info-row"><span class="info-key">ID</span><span class="info-val tbl-mono">#{{ user.id }}</span></div>
+    <div class="info-row"><span class="info-key">Логин</span><span class="info-val">{{ user.login }}</span></div>
+    <div class="info-row"><span class="info-key">Email</span><span class="info-val">{{ user.email }}</span></div>
+    <div class="info-row"><span class="info-key">Телефон</span><span class="info-val">{{ user.phone or '—' }}</span></div>
+    <div class="info-row"><span class="info-key">Токен</span><span class="info-val tbl-mono" data-copy="{{ user.secret_token }}" style="cursor:pointer;color:var(--primary-light)">{{ user.secret_token }}</span></div>
+    <div class="info-row"><span class="info-key">Баланс</span><span class="info-val" style="color:#6ee7b7;font-weight:700">{{ user.balance|round(2) }} ₽</span></div>
+    <div class="info-row"><span class="info-key">Регистрация</span><span class="info-val tbl-mono">{{ (user.registered_at or '')[:10] }}</span></div>
+    <div class="info-row"><span class="info-key">Последний вход</span><span class="info-val tbl-mono">{{ (user.last_login or '—')[:16] }}</span></div>
+    <div class="info-row"><span class="info-key">IP</span><span class="info-val tbl-mono">{{ user.last_ip or '—' }}</span></div>
+    {% if user.comment %}<div class="info-row"><span class="info-key">Комментарий</span><span class="info-val" style="color:#fbbf24">{{ user.comment }}</span></div>{% endif %}
+    <!-- Balance actions -->
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <form method="POST" style="display:flex;gap:6px;flex:1">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="add_balance">
+        <input type="number" name="amount" placeholder="Сумма ₽" min="1" step="0.01" style="flex:1;min-width:80px">
+        <button class="btn btn-primary btn-sm">+ Начислить</button>
+      </form>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <form method="POST" style="display:flex;gap:6px;flex:1">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="set_balance">
+        <input type="number" name="amount" placeholder="Установить баланс" min="0" step="0.01" style="flex:1">
+        <button class="btn btn-secondary btn-sm">Задать</button>
+      </form>
+    </div>
+  </div>
+  <!-- Block / password / comment / package -->
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">⚙️</span> Управление</div></div>
+    {% if not user.is_blocked %}
+    <form method="POST" style="margin-bottom:10px">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="block">
+      <div class="form-group" style="margin-bottom:8px">
+        <input type="text" name="reason" placeholder="Причина блокировки">
+      </div>
+      <button class="btn btn-danger btn-sm btn-full"
+              data-confirm="Заблокировать {{ user.login }}?">🚫 Заблокировать</button>
+    </form>
+    {% else %}
+    <form method="POST" style="margin-bottom:10px">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="unblock">
+      <button class="btn btn-secondary btn-sm btn-full">✅ Разблокировать</button>
+    </form>
+    {% endif %}
+    <form method="POST" style="margin-bottom:10px">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="set_password">
+      <div class="form-group" style="margin-bottom:8px">
+        <input type="password" name="password" placeholder="Новый пароль (мин. 6)">
+      </div>
+      <button class="btn btn-secondary btn-sm btn-full"
+              data-confirm="Изменить пароль для {{ user.login }}?">🔑 Изменить пароль</button>
+    </form>
+    <form method="POST" style="margin-bottom:10px">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="set_comment">
+      <div class="form-group" style="margin-bottom:8px">
+        <input type="text" name="comment" value="{{ user.comment or '' }}" placeholder="Комментарий администратора">
+      </div>
+      <button class="btn btn-ghost btn-sm btn-full">💬 Сохранить комментарий</button>
+    </form>
+    <!-- Add package -->
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Подключить пакет</div>
+      <form method="POST" style="display:flex;gap:8px">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="add_package">
+        <select name="package_id" style="flex:1">
+          {% for p in all_packages %}<option value="{{ p.id }}">{{ p.svc_name }} · {{ p.name }} ({{ p.price_per_day }} ₽/сут)</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary btn-sm">+ Добавить</button>
+      </form>
+    </div>
+    {% if chat_count %}<a href="/admin/chat/{{ user.id }}" class="btn btn-ghost btn-sm btn-full" style="margin-top:10px">💬 Открыть чат ({{ chat_count }} сообщений)</a>{% endif %}
+  </div>
+</div>
+<!-- Tabs: packages / topups / charges / audit / referrals -->
+<div class="card animate">
+  <div class="card-glow"></div>
+  <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto">
+    {% for tab_id, tab_label in [('pkgs','📦 Пакеты'),('topups','💰 Пополнения'),('charges','📉 Списания'),('audit','📋 Аудит'),('refs','👥 Рефералы')] %}
+    <button class="tab-btn" onclick="showTab('{{ tab_id }}')" id="tab-{{ tab_id }}">{{ tab_label }}</button>
+    {% endfor %}
+  </div>
+  <div id="pane-pkgs">
+    {% if active_pkgs %}
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Услуга</th><th>Пакет</th><th>Подкл.</th><th>₽/сут</th><th>С</th></tr></thead>
+      <tbody>{% for p in active_pkgs %}<tr>
+        <td>{{ p.svc_icon }} {{ p.svc_name }}</td>
+        <td style="font-weight:600">{{ p.name }}</td>
+        <td class="tbl-mono">{{ p.connections }}</td>
+        <td style="color:var(--primary-light)">{{ p.price_per_day }}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (p.started_at or '')[:10] }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty-state"><div class="empty-state-text">Нет активных пакетов</div></div>{% endif %}
+  </div>
+  <div id="pane-topups" style="display:none">
+    {% if topups %}<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Сумма</th><th>Метод</th><th>Статус</th><th>Дата</th></tr></thead>
+      <tbody>{% for t in topups %}<tr>
+        <td style="color:#6ee7b7;font-weight:600">{{ t.amount|int }} ₽</td>
+        <td>{{ t.method }}</td>
+        <td>{% if t.status=='confirmed' %}<span class="badge badge-green">Зачислено</span>
+            {% elif t.status=='pending' %}<span class="badge badge-yellow">Ожидание</span>
+            {% else %}<span class="badge badge-red">{{ t.status }}</span>{% endif %}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (t.created_at or '')[:16] }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty-state"><div class="empty-state-text">Пополнений нет</div></div>{% endif %}
+  </div>
+  <div id="pane-charges" style="display:none">
+    {% if charges %}<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Пакет</th><th>Сумма</th><th>Дата</th></tr></thead>
+      <tbody>{% for c in charges %}<tr>
+        <td>{{ c.pkg_name }}</td>
+        <td style="color:#f87171;font-weight:600">−{{ c.amount }} ₽</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (c.charged_at or '')[:16] }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty-state"><div class="empty-state-text">Списаний нет</div></div>{% endif %}
+  </div>
+  <div id="pane-audit" style="display:none">
+    {% if audit %}<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Действие</th><th>Детали</th><th>IP</th><th>Дата</th></tr></thead>
+      <tbody>{% for a in audit %}<tr>
+        <td style="font-weight:500">{{ a.action }}</td>
+        <td style="color:var(--text3);font-size:12px">{{ a.details or '—' }}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ a.ip or '—' }}</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (a.created_at or '')[:16] }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty-state"><div class="empty-state-text">Журнал пуст</div></div>{% endif %}
+  </div>
+  <div id="pane-refs" style="display:none">
+    {% if referrals %}<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Пользователь</th><th>Дата</th></tr></thead>
+      <tbody>{% for r in referrals %}<tr>
+        <td><a href="/admin/users?q={{ r.login }}" style="color:var(--primary-light)">{{ r.login }}</a></td>
+        <td class="tbl-mono" style="font-size:11px">{{ (r.created_at or '')[:10] }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty-state"><div class="empty-state-text">Нет рефералов</div></div>{% endif %}
+  </div>
+</div>
+<style>
+.tab-btn{background:none;border:none;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.tab-btn:hover{color:var(--text1)}
+.tab-btn.active{color:var(--primary-light);border-bottom-color:var(--primary-light)}
+</style>
+<script>
+function showTab(id){
+  ['pkgs','topups','charges','audit','refs'].forEach(t=>{
+    document.getElementById('pane-'+t).style.display = t===id?'':'none'
+    document.getElementById('tab-'+t).classList.toggle('active', t===id)
+  })
+}
+showTab('pkgs')
+</script>
+{% endblock %}

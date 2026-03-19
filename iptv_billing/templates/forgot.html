@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Сброс пароля — IPTV Billing{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card animate">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">🔑</div>
+      <h1>Сброс пароля</h1>
+      <p>Введите email — пришлём ссылку</p>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-wrap has-icon">
+          <span class="input-icon">✉️</span>
+          <input type="email" name="email" placeholder="you@example.com" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Отправить ссылку</button>
+    </form>
+    <div class="auth-footer" style="margin-top:16px">
+      <a href="/login">← Назад к входу</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

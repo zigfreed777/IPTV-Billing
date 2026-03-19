@@ -1,0 +1,50 @@
+{% extends 'admin/base.html' %}
+{% block title %}Рассылка #{{ bc.id }}{% endblock %}
+{% block content %}
+<a href="/admin/broadcasts" style="color:var(--text3);font-size:13px">← Рассылки</a>
+<div class="page-title animate" style="margin-top:8px">📨 Рассылка #{{ bc.id }}</div>
+<div class="grid grid-2">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title">📋 Детали</div>
+      {% if bc.status == 'draft' %}<span class="badge badge-yellow">Черновик</span>
+      {% else %}<span class="badge badge-green">Отправлена</span>{% endif %}
+    </div>
+    <div class="info-row"><span class="info-key">Тема</span><span class="info-val">{{ bc.subject }}</span></div>
+    <div class="info-row"><span class="info-key">Фильтр</span><span class="info-val">{{ bc.filter_type }}{% if bc.filter_value %} = {{ bc.filter_value }}{% endif %}</span></div>
+    <div class="info-row"><span class="info-key">Получателей сейчас</span><span class="info-val" style="color:#c4b5fd;font-weight:700">{{ recipients_count }}</span></div>
+    {% if bc.sent_at %}
+    <div class="info-row"><span class="info-key">Отправлено</span><span class="info-val tbl-mono">{{ bc.sent_at[:16] }}</span></div>
+    <div class="info-row"><span class="info-key">Доставлено</span><span class="info-val" style="color:#6ee7b7">{{ bc.sent_count }}</span></div>
+    {% endif %}
+    {% if bc.status == 'draft' %}
+    <div style="margin-top:16px;padding:12px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:13px;color:#fde68a;margin-bottom:16px">
+      ⚠️ Письмо будет отправлено <b>{{ recipients_count }}</b> пользователям. Это действие необратимо.
+    </div>
+    <div style="display:flex;gap:8px">
+      <form method="POST">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="send">
+        <button type="submit" class="btn btn-primary"
+                data-confirm="Отправить рассылку «{{ bc.subject }}» для {{ recipients_count }} получателей?">
+          🚀 Отправить сейчас
+        </button>
+      </form>
+      <form method="POST">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="action" value="delete">
+        <button type="submit" class="btn btn-danger" data-confirm="Удалить черновик?">🗑 Удалить</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">👁 Предпросмотр письма</div></div>
+    <div style="background:#0f0f1a;border-radius:8px;padding:16px;max-height:400px;overflow-y:auto">
+      {{ bc.body_html|safe }}
+    </div>
+  </div>
+</div>
+{% endblock %}

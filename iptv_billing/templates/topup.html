@@ -1,0 +1,125 @@
+{% extends 'dash_base.html' %}
+{% block title %}Пополнение баланса — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-title animate">💰 Пополнение баланса</div>
+    <div class="page-subtitle">Текущий баланс: <b style="color:#c4b5fd">{{ user.balance|round(2) }} ₽</b></div>
+    <div class="grid grid-2" style="margin-bottom:16px">
+      <div class="card animate">
+        <div class="card-glow"></div>
+        <div class="card-head">
+          <div class="card-title"><span class="card-title-icon">💳</span> Создать платёж</div>
+        </div>
+        <form method="POST">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="create">
+          <!-- QUICK AMOUNTS -->
+          <div class="form-group">
+            <label class="form-label">Быстрый выбор суммы</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              {% for amt in [199, 349, 599, 999, 1500, 3000] %}
+              <button type="button" class="btn btn-ghost btn-sm quick-amount"
+                      data-amount="{{ amt }}" onclick="setAmount({{ amt }})">{{ amt }} ₽</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Сумма пополнения</label>
+            <div class="input-wrap has-icon">
+              <span class="input-icon">₽</span>
+              <input type="number" name="amount" id="amount-input"
+                     placeholder="от 10 до 50 000" min="10" max="50000"
+                     step="1" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Способ оплаты</label>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              {% for val, icon, label, hint in [
+                ('card','💳','Банковская карта','Visa / MasterCard / МИР'),
+                ('crypto','₿','Криптовалюта','USDT / BTC / ETH'),
+                ('transfer','🏦','Банковский перевод','По реквизитам')
+              ] %}
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;
+                     background:var(--surface2);border:1px solid var(--border);
+                     border-radius:var(--radius);cursor:pointer;transition:var(--transition)"
+                     class="method-option">
+                <input type="radio" name="method" value="{{ val }}"
+                       {% if val=='card' %}checked{% endif %}
+                       style="width:auto;accent-color:var(--primary)">
+                <span style="font-size:18px">{{ icon }}</span>
+                <span>
+                  <b style="font-size:14px">{{ label }}</b>
+                  <span style="display:block;font-size:12px;color:var(--text3)">{{ hint }}</span>
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Создать счёт на оплату</button>
+        </form>
+        <div style="margin-top:14px;padding:12px;background:rgba(59,130,246,.07);
+             border:1px solid rgba(59,130,246,.2);border-radius:8px;font-size:12px;color:#93c5fd">
+          ℹ После создания счёта менеджер подтвердит платёж и зачислит средства в течение 15 минут.
+        </div>
+      </div>
+      <div class="card animate animate-1">
+        <div class="card-glow"></div>
+        <div class="card-head">
+          <div class="card-title"><span class="card-title-icon">📋</span> История пополнений</div>
+        </div>
+        {% if topups %}
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Сумма</th><th>Способ</th><th>Статус</th><th>Дата</th><th></th></tr></thead>
+            <tbody>
+            {% for t in topups %}
+            <tr>
+              <td class="tbl-mono" style="color:var(--text3)">{{ t.id }}</td>
+              <td style="font-weight:600;color:#c4b5fd">{{ t.amount|int }} ₽</td>
+              <td>
+                {% if t.method=='card' %}💳{% elif t.method=='crypto' %}₿{% else %}🏦{% endif %}
+                {{ t.method }}
+              </td>
+              <td>
+                {% if t.status=='confirmed' %}<span class="badge badge-green"><span class="badge-dot"></span>Зачислен</span>
+                {% elif t.status=='pending' %}<span class="badge badge-yellow"><span class="badge-dot"></span>Ожидание</span>
+                {% elif t.status=='cancelled' %}<span class="badge badge-red"><span class="badge-dot"></span>Отменён</span>
+                {% else %}<span class="badge badge-red"><span class="badge-dot"></span>{{ t.status }}</span>{% endif %}
+              </td>
+              <td class="tbl-mono" style="font-size:11px">{{ (t.created_at or '')[:10] }}</td>
+              <td>
+                {% if t.status == 'pending' %}
+                <form method="POST" style="display:inline">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}">
+                  <input type="hidden" name="action" value="cancel">
+                  <input type="hidden" name="topup_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-danger btn-xs"
+                          data-confirm="Отменить запрос на {{ t.amount|int }} ₽?">✕</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">💰</div>
+          <div class="empty-state-text">Пополнений пока нет</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+function setAmount(v){
+  document.getElementById('amount-input').value=v
+  document.querySelectorAll('.quick-amount').forEach(b=>{
+    b.classList.toggle('btn-primary', parseInt(b.dataset.amount)===v)
+    b.classList.toggle('btn-ghost', parseInt(b.dataset.amount)!==v)
+  })
+}
+</script>
+{% endblock %}

@@ -1,0 +1,309 @@
+{% extends 'dash_base.html' %}
+{% block title %}Услуги — IPTV Billing{% endblock %}
+{% block page_content %}
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <h1>📦 Услуги и пакеты</h1>
+      <p class="subtitle">Управляйте подпиской — оплата посуточно</p>
+    </div>
+    <a href="/dashboard/finances" class="btn btn-ghost btn-sm" style="flex-shrink:0">
+      Баланс: <b style="color:var(--primary-light)">{{ user.balance|round(2) }} ₽</b>
+    </a>
+  </div>
+</div>
+
+<!-- ── ПРОМОКОД ─────────────────────────────────────────────────────────────── -->
+<div class="card animate" style="margin-bottom:20px">
+  <div class="card-glow"></div>
+  <div class="card-head">
+    <div class="card-title"><span class="card-title-icon">🎟</span> Промокод</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div style="display:flex;gap:8px">
+        <input type="text" id="global-promo-input" placeholder="Введите промокод"
+               style="flex:1;text-transform:uppercase;letter-spacing:.05em;font-weight:600"
+               maxlength="32" autocomplete="off">
+        <button class="btn btn-secondary" id="global-promo-btn" onclick="checkGlobalPromo()">Применить</button>
+        <button class="btn btn-ghost" id="global-promo-clear" style="display:none" onclick="clearPromo()">✕</button>
+      </div>
+      <div id="global-promo-result" style="margin-top:8px;font-size:13px;min-height:20px"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);max-width:220px;line-height:1.6">
+      Промокод применяется при подключении пакета. Скидка будет рассчитана автоматически.
+    </div>
+  </div>
+</div>
+
+<!-- ── СВОДКА ПОДПИСКИ ─────────────────────────────────────────────────────── -->
+{% if active_packages %}
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;
+  background:rgba(110,231,183,.06);border:1px solid rgba(110,231,183,.15);border-radius:14px;margin-bottom:20px">
+  <span style="font-size:20px">✅</span>
+  <div style="flex:1;min-width:120px">
+    <div style="font-weight:700;font-size:14px">{{ active_packages|length }} пакет(а) активно</div>
+    <div style="font-size:12px;color:var(--text2)">{{ daily_cost }} ₽/сут · ≈{{ (daily_cost*30)|round(0)|int }} ₽/мес</div>
+  </div>
+  {% if daily_cost > 0 %}
+  {% set days_left = (user.balance / daily_cost)|int %}
+  <div style="text-align:right;flex-shrink:0">
+    <div style="font-size:20px;font-weight:800;color:{% if days_left<3 %}#f87171{% elif days_left<7 %}#fbbf24{% else %}#6ee7b7{% endif %}">{{ days_left }}</div>
+    <div style="font-size:11px;color:var(--text3)">дней</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Активные пакеты -->
+<div class="card animate" style="margin-bottom:20px">
+  <div class="card-glow"></div>
+  <div class="card-head"><div class="card-title"><span class="card-title-icon">✅</span> Ваша подписка</div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+    {% for p in active_packages %}
+    <div style="padding:14px;background:rgba(110,231,183,.05);border:1px solid rgba(110,231,183,.2);border-radius:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px;flex-shrink:0">{{ p.service_icon }}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px">{{ p.name }}</div>
+          <div style="font-size:11px;color:var(--text3)">{{ p.service_name }} · с {{ (p.started_at or '')[:10] }}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">
+        🔗 {{ p.connections + (p.extra_connections or 0) }} подкл.
+        {% if p.extra_connections %}<span style="color:var(--primary-light)">(+{{ p.extra_connections }} доп.)</span>{% endif %}
+        · {{ p.price_per_day }} ₽/сут
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        {% if p.allow_extra_connections %}
+        <button class="btn btn-ghost btn-xs" onclick="openExtraConn({{ p.up_id }},{{ p.connections }},{{ p.extra_connections or 0 }},{{ p.max_extra_connections }},{{ p.extra_connection_price }})">
+          ➕ Подключения
+        </button>
+        {% endif %}
+        <form method="POST" action="/dashboard/package/disconnect/{{ p.up_id }}" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <button class="btn btn-danger btn-xs" data-confirm="Отключить пакет «{{ p.name }}»?">Отключить</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ── ДОСТУПНЫЕ ПАКЕТЫ ─────────────────────────────────────────────────────── -->
+{% for svc in services %}
+{% set svc_pkgs = all_packages | selectattr('service_id', 'equalto', svc.id) | list %}
+{% if svc_pkgs %}
+<div class="card animate" style="margin-bottom:16px">
+  <div class="card-glow"></div>
+  <div class="svc-header">
+    <div class="svc-icon-wrap">{{ svc.icon }}</div>
+    <div>
+      <div class="svc-name">{{ svc.name }}</div>
+      {% if svc.description %}<div class="svc-desc">{{ svc.description }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="pkg-grid">
+    {% for p in svc_pkgs %}
+    {% set is_active = p.id in active_ids %}
+    {% set can_afford = user.balance >= p.price_per_day %}
+    <div class="pkg-card {% if is_active %}active{% endif %}" id="pkg-card-{{ p.id }}">
+      {% if is_active %}
+      <div style="position:absolute;top:10px;right:10px">
+        <span class="badge badge-green" style="font-size:10px"><span class="badge-dot"></span>Подключён</span>
+      </div>
+      {% endif %}
+      <div class="pkg-icon">{{ svc.icon }}</div>
+      <div class="pkg-name">{{ p.name }}</div>
+      <div class="pkg-desc">{{ p.description or '' }}</div>
+      <div>
+        <div class="pkg-price" id="pkg-price-display-{{ p.id }}">
+          {{ p.price_per_day }} ₽<span class="pkg-price-month">/сут</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3)" id="pkg-month-display-{{ p.id }}">
+          ≈{{ (p.price_per_day*30)|round(0)|int }} ₽/мес
+        </div>
+      </div>
+      <div class="pkg-conns">🔗 {{ p.connections }} подкл. одновременно</div>
+      {% if not is_active %}
+      <!-- Promo discount badge (shown when promo applies) -->
+      <div id="pkg-promo-badge-{{ p.id }}" style="display:none;padding:6px 10px;
+        background:rgba(110,231,183,.12);border:1px solid rgba(110,231,183,.25);
+        border-radius:8px;font-size:12px;color:#6ee7b7;font-weight:600"></div>
+      <form method="POST" action="/dashboard/package/connect/{{ p.id }}" style="margin-top:6px">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="promo_code" id="pkg-promo-{{ p.id }}" value="">
+        <button class="btn btn-primary btn-sm btn-full pkg-connect-btn" style="font-size:13px"
+          {% if not can_afford %}disabled title="Нужно {{ p.price_per_day }} ₽ — пополните баланс"{% endif %}>
+          {% if not can_afford %}💰 Нет средств{% else %}⚡ Подключить{% endif %}
+        </button>
+      </form>
+      {% else %}
+      <div style="margin-top:6px;padding:8px;background:rgba(110,231,183,.08);
+                  border-radius:8px;font-size:12px;color:#6ee7b7;text-align:center">✓ Уже подключён</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- ── ИСТОРИЯ СПИСАНИЙ ─────────────────────────────────────────────────────── -->
+{% if charges %}
+<div class="card animate">
+  <div class="card-glow"></div>
+  <div class="card-head">
+    <div class="card-title"><span class="card-title-icon">📋</span> История списаний</div>
+    <a href="/dashboard/finances" class="btn btn-ghost btn-sm">Все →</a>
+  </div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Услуга</th><th>Пакет</th><th>Сумма</th><th>Дата</th></tr></thead>
+    <tbody>
+    {% for c in charges %}
+    <tr>
+      <td style="color:var(--text3);font-size:12px">{{ c.svc_name }}</td>
+      <td style="font-weight:500">{{ c.pkg_name }}</td>
+      <td style="color:#f87171;font-weight:600">−{{ c.amount }} ₽</td>
+      <td class="tbl-mono" style="font-size:12px">{{ (c.charged_at or '')[:16] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<!-- ── МОДАЛ: дополнительные подключения ───────────────────────────────────── -->
+<div id="extra-conn-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+  z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;
+    padding:24px;width:min(400px,90vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:16px">➕ Дополнительные подключения</div>
+      <button onclick="document.getElementById('extra-conn-modal').style.display='none'"
+        style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="extra-conn-info" style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7"></div>
+    <form method="POST" id="extra-conn-form">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="form-group">
+        <label class="form-label">Количество дополнительных подключений</label>
+        <input type="number" name="extra" id="extra-conn-value" min="0" value="0" style="font-size:18px;font-weight:700;text-align:center">
+      </div>
+      <div id="extra-conn-cost" style="font-size:13px;color:var(--primary-light);margin-bottom:14px;font-weight:600"></div>
+      <button type="submit" class="btn btn-primary btn-full">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const csrf = '{{ csrf }}'
+let activePromo = {code:'', type:'', value:0, discount:0}
+
+// ── Глобальный промокод ──────────────────────────────────────────────────────
+async function checkGlobalPromo() {
+  const input = document.getElementById('global-promo-input')
+  const result= document.getElementById('global-promo-result')
+  const code  = input.value.trim().toUpperCase()
+  if (!code) return
+  input.value = code
+  result.innerHTML = '<span style="color:var(--text3)">Проверяем…</span>'
+
+  const fd = new FormData()
+  fd.append('_csrf', csrf); fd.append('code', code)
+  try {
+    const r = await fetch('/dashboard/promo/check', {method:'POST', body:fd})
+    const d = await r.json()
+    if (d.ok) {
+      activePromo = {code, type: d.type, value: d.value, desc: d.desc}
+      result.innerHTML = `<span style="color:#6ee7b7;font-weight:600">✓ Промокод применён: ${d.desc}</span>`
+      document.getElementById('global-promo-clear').style.display = ''
+      document.getElementById('global-promo-btn').style.display   = 'none'
+      applyPromoToCards(d)
+    } else {
+      activePromo = {code:'', type:'', value:0}
+      result.innerHTML = `<span style="color:#f87171">✕ ${d.error}</span>`
+    }
+  } catch { result.innerHTML = '<span style="color:#f87171">Ошибка проверки</span>' }
+}
+
+function clearPromo() {
+  activePromo = {code:'', type:'', value:0}
+  document.getElementById('global-promo-input').value = ''
+  document.getElementById('global-promo-result').innerHTML = ''
+  document.getElementById('global-promo-clear').style.display = 'none'
+  document.getElementById('global-promo-btn').style.display  = ''
+  // Reset all cards
+  document.querySelectorAll('[id^="pkg-promo-badge-"]').forEach(el => el.style.display='none')
+  document.querySelectorAll('[id^="pkg-promo-"]').forEach(el => { if(el.tagName==='INPUT') el.value='' })
+}
+
+function applyPromoToCards(d) {
+  document.querySelectorAll('.pkg-card:not(.active)').forEach(card => {
+    const m  = card.id.match(/pkg-card-(\d+)/)
+    if (!m) return
+    const id = m[1]
+    const priceEl  = document.getElementById(`pkg-price-display-${id}`)
+    const monthEl  = document.getElementById(`pkg-month-display-${id}`)
+    const badgeEl  = document.getElementById(`pkg-promo-badge-${id}`)
+    const hiddenEl = document.getElementById(`pkg-promo-${id}`)
+    if (!priceEl || !badgeEl) return
+
+    // parse base price from data attr or text
+    const basePrice = parseFloat(card.dataset.price || priceEl.textContent)
+    let discountText = ''
+
+    if (d.type === 'percent') {
+      const disc = (basePrice * d.value / 100).toFixed(2)
+      const newPrice = Math.max(0, basePrice - disc).toFixed(2)
+      discountText = `🎟 Скидка ${d.value}%: ${newPrice} ₽/сут`
+    } else if (d.type === 'fixed') {
+      const newPrice = Math.max(0, basePrice - Math.min(d.value, basePrice)).toFixed(2)
+      discountText = `🎟 Скидка ${d.value} ₽: ${newPrice} ₽/сут`
+    } else if (d.type === 'days') {
+      discountText = `🎟 +${d.value} бонусных дней`
+    }
+
+    if (discountText) {
+      badgeEl.textContent = discountText
+      badgeEl.style.display = ''
+    }
+    if (hiddenEl) hiddenEl.value = activePromo.code
+  })
+}
+
+// Enter key in promo input
+document.getElementById('global-promo-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkGlobalPromo()
+})
+
+// ── Дополнительные подключения ───────────────────────────────────────────────
+function openExtraConn(upId, base, current, maxExtra, pricePerExtra) {
+  const modal = document.getElementById('extra-conn-modal')
+  const form  = document.getElementById('extra-conn-form')
+  const info  = document.getElementById('extra-conn-info')
+  const val   = document.getElementById('extra-conn-value')
+  const cost  = document.getElementById('extra-conn-cost')
+
+  form.action = `/dashboard/package/extra-connections/${upId}`
+  val.max     = maxExtra
+  val.value   = current
+  info.innerHTML = `Базовых подключений: <b>${base}</b><br>Цена за доп. подключение: <b>${pricePerExtra} ₽/сут</b><br>Макс. дополнительных: <b>${maxExtra}</b>`
+
+  val.oninput = () => {
+    const extra = Math.max(0, Math.min(parseInt(val.value)||0, maxExtra))
+    const daily = (extra * pricePerExtra).toFixed(2)
+    cost.textContent = extra > 0 ? `Итого доп. стоимость: ${daily} ₽/сут` : 'Дополнительная стоимость: 0 ₽'
+  }
+  val.oninput()
+  modal.style.display = 'flex'
+}
+
+document.getElementById('extra-conn-modal')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.style.display='none'
+})
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') document.getElementById('extra-conn-modal').style.display='none'
+})
+</script>
+{% endblock %}

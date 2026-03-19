@@ -1,0 +1,211 @@
+{% extends 'admin/base.html' %}
+{% block title %}Дашборд{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div>
+    <div class="page-title" style="margin:0">📊 Дашборд</div>
+    <div style="font-size:13px;color:var(--text3);margin-top:2px">Обзор платформы в реальном времени</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if stats.pending_topups %}
+    <a href="/admin/topups" class="btn btn-primary btn-sm">
+      💰 Подтвердить {{ stats.pending_topups }} пополнений
+    </a>
+    {% endif %}
+    {% if stats.unread_chat %}
+    <a href="/admin/chat" class="btn btn-secondary btn-sm">
+      💬 {{ stats.unread_chat }} новых сообщений
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Main KPI -->
+<div class="stats-row" style="margin-bottom:16px">
+  {% for label, val, cls, href in [
+    ('Пользователей',   stats.users_total,    'stat-v', '/admin/users'),
+    ('Активных',        stats.users_active,   'stat-b', '/admin/users?filter=active'),
+    ('Подписчиков',     stats.subscribed,     'stat-g', '/admin/users?filter=active'),
+    ('Ждут оплаты',     stats.pending_topups, 'stat-o', '/admin/topups'),
+  ] %}
+  <a href="{{ href }}" class="stat-card {{ cls }} animate animate-{{ loop.index }}" style="text-decoration:none;cursor:pointer">
+    <div class="stat-num">{{ val }}</div>
+    <div class="stat-lbl">{{ label }}</div>
+  </a>
+  {% endfor %}
+</div>
+<div class="stats-row" style="margin-bottom:20px">
+  {% for label, val, cls, href in [
+    ('Выручка за месяц', (stats.revenue_month|round(2)|string)+' ₽', 'stat-v', '/admin/analytics'),
+    ('Пополнений всего', (stats.revenue_total|round(2)|string)+' ₽', 'stat-g', '/admin/analytics'),
+    ('Активных пакетов', stats.packages_active, 'stat-b', '/admin/services'),
+    ('Чатов без ответа', stats.unread_chat, 'stat-o', '/admin/chat'),
+  ] %}
+  <a href="{{ href }}" class="stat-card {{ cls }} animate" style="text-decoration:none;cursor:pointer">
+    <div class="stat-num" style="font-size:{% if val|string|length > 8 %}15px{% elif val|string|length > 5 %}18px{% else %}26px{% endif %}">{{ val }}</div>
+    <div class="stat-lbl">{{ label }}</div>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  <!-- Quick actions -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">⚡</span> Быстрые действия</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      {% for href, icon, label, cls in [
+        ('/admin/users?filter=blocked',    '🚫', 'Заблокированные',  'btn-ghost'),
+        ('/admin/users?filter=trial',      '🎁', 'Пробный период',   'btn-ghost'),
+        ('/admin/topups',                  '💰', 'Подтвердить оплату','btn-primary'),
+        ('/admin/broadcasts',              '📨', 'Новая рассылка',    'btn-secondary'),
+        ('/admin/chat',                    '💬', 'Открыть чат',       'btn-ghost'),
+        ('/admin/promocodes',              '🎟', 'Промокоды',         'btn-ghost'),
+        ('/admin/settings',                '⚙️', 'Настройки',         'btn-ghost'),
+        ('/admin/analytics',               '📈', 'Аналитика',         'btn-ghost'),
+      ] %}
+      <a href="{{ href }}" class="btn {{ cls }} btn-sm" style="justify-content:center">{{ icon }} {{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Package popularity -->
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title"><span class="card-title-icon">📦</span> Популярность пакетов</div>
+      <a href="/admin/services" class="btn btn-ghost btn-sm">Управление →</a>
+    </div>
+    {% if pkg_popularity %}
+    {% set max_cnt = pkg_popularity[0].cnt if pkg_popularity[0].cnt > 0 else 1 %}
+    {% for p in pkg_popularity %}
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:500">{{ p.icon }} {{ p.name }}</span>
+        <span style="font-size:12px;color:var(--primary-light);font-weight:700">{{ p.cnt }}</span>
+      </div>
+      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:{{ ((p.cnt / max_cnt) * 100)|int }}%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:3px;transition:.6s"></div>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><div class="empty-state-text">Подписок пока нет</div></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  <!-- Pending topups -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title"><span class="card-title-icon">💰</span> Ожидают подтверждения</div>
+      <a href="/admin/topups" class="btn btn-ghost btn-sm">Все →</a>
+    </div>
+    {% if pending_topups_list %}
+    {% for t in pending_topups_list %}
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:600">{{ t.login }}</div>
+        <div style="font-size:12px;color:var(--text3)">{{ t.method }} · {{ (t.created_at or '')[:16] }}</div>
+      </div>
+      <span style="font-weight:800;color:#6ee7b7;font-size:16px">{{ t.amount|int }} ₽</span>
+      <form method="POST" action="/admin/topups/{{ t.id }}/confirm" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <button class="btn btn-primary btn-xs" data-confirm="Подтвердить {{ t.amount|int }} ₽ для {{ t.login }}?">✓</button>
+      </form>
+      <form method="POST" action="/admin/topups/{{ t.id }}/reject" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <button class="btn btn-danger btn-xs" data-confirm="Отклонить?">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state" style="padding:20px"><div class="empty-state-icon">✅</div><div class="empty-state-text">Нет ожидающих</div></div>
+    {% endif %}
+  </div>
+
+  <!-- Top users by balance -->
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title"><span class="card-title-icon">🏆</span> Топ по балансу</div>
+      <a href="/admin/users" class="btn btn-ghost btn-sm">Все →</a>
+    </div>
+    {% if top_users %}
+    {% for u in top_users %}
+    <a href="/admin/users/{{ u.id }}" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit">
+      <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">{{ u.login[0]|upper }}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.login }}</div>
+        <div style="font-size:11px;color:var(--text3)">{{ u.pkg_count }} пакет(а) · {{ u.daily_cost|round(2) }} ₽/сут</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-weight:700;font-size:14px;color:#6ee7b7">{{ u.balance|round(0)|int }} ₽</div>
+      </div>
+    </a>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><div class="empty-state-text">Нет пользователей</div></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <!-- Recent users -->
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title"><span class="card-title-icon">👥</span> Новые пользователи</div>
+      <a href="/admin/users" class="btn btn-ghost btn-sm">Все →</a>
+    </div>
+    {% if recent_users %}
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Логин</th><th>Статус</th><th>Баланс</th><th>Дата</th><th></th></tr></thead>
+      <tbody>
+      {% for u in recent_users %}
+      <tr>
+        <td style="font-weight:600"><a href="/admin/users/{{ u.id }}" style="color:var(--primary-light)">{{ u.login }}</a></td>
+        <td>{% if u.is_blocked %}<span class="badge badge-red">Блок</span>
+            {% elif u.email_confirmed %}<span class="badge badge-green">OK</span>
+            {% else %}<span class="badge badge-yellow">⚠</span>{% endif %}</td>
+        <td class="tbl-mono">{{ u.balance|round(0)|int }} ₽</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (u.registered_at or '')[:10] }}</td>
+        <td><a href="/admin/users/{{ u.id }}" class="btn btn-ghost btn-xs">→</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-text">Нет пользователей</div></div>
+    {% endif %}
+  </div>
+
+  <!-- Recent charges -->
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head">
+      <div class="card-title"><span class="card-title-icon">📉</span> Последние списания</div>
+      <a href="/admin/analytics" class="btn btn-ghost btn-sm">Аналитика →</a>
+    </div>
+    {% if recent_charges %}
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Пользователь</th><th>Пакет</th><th>Сумма</th><th>Дата</th></tr></thead>
+      <tbody>
+      {% for c in recent_charges %}
+      <tr>
+        <td><a href="/admin/users/{{ c.user_id }}" style="color:var(--primary-light);font-weight:600">{{ c.login }}</a></td>
+        <td style="color:var(--text3);font-size:12px">{{ c.pkg_name }}</td>
+        <td style="color:var(--primary-light);font-weight:600">{{ c.amount }} ₽</td>
+        <td class="tbl-mono" style="font-size:11px">{{ (c.charged_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-text">Списаний пока нет</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

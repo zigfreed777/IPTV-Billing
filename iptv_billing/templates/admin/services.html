@@ -1,0 +1,250 @@
+{% extends 'admin/base.html' %}
+{% block title %}Услуги и пакеты{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div><div class="page-title" style="margin:0">📦 Услуги, пакеты и серверы</div>
+  <div style="font-size:13px;color:var(--text3)">Управление каталогом и инфраструктурой</div></div>
+</div>
+
+<!-- ─── УСЛУГИ ─────────────────────────────────────────────────────── -->
+<div class="card animate" style="margin-bottom:16px">
+  <div class="card-glow"></div>
+  <div class="card-head">
+    <div class="card-title"><span class="card-title-icon">🗂</span> Услуги</div>
+    <button class="btn btn-primary btn-sm" onclick="togglePanel('add-service')">+ Добавить</button>
+  </div>
+  <div id="add-service" style="display:none;background:var(--surface3);border-radius:10px;padding:14px;margin-bottom:14px">
+    <form method="POST" style="display:grid;grid-template-columns:60px 1fr 2fr auto;gap:8px;align-items:end">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="add_service">
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Иконка</label>
+        <input type="text" name="icon" value="📦" style="text-align:center;font-size:18px"></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Название *</label>
+        <input type="text" name="name" placeholder="Телеканалы" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Описание</label>
+        <input type="text" name="description" placeholder="Краткое описание"></div>
+      <button type="submit" class="btn btn-primary btn-sm">Создать</button>
+    </form>
+  </div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Услуга</th><th>Описание</th><th>Пакетов</th><th>Статус</th><th style="width:180px">Действия</th></tr></thead>
+    <tbody>
+    {% for s in services %}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">{{ s.icon }}</span>
+          <span style="font-weight:600">{{ s.name }}</span>
+        </div>
+      </td>
+      <td style="color:var(--text3);font-size:12px">{{ s.description or '—' }}</td>
+      <td class="tbl-mono">{{ packages|selectattr('service_id','equalto',s.id)|list|length }}</td>
+      <td>{% if s.is_active %}<span class="badge badge-green">Активна</span>
+          {% else %}<span class="badge badge-red">Откл.</span>{% endif %}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-xs" onclick="editService({{ s.id }},'{{ s.name|replace("'","\\'")|e }}','{{ s.icon }}','{{ s.description|replace("'","\\'")|e }}')">✏️</button>
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="toggle_service">
+          <input type="hidden" name="service_id" value="{{ s.id }}">
+          <button class="btn btn-ghost btn-xs">{% if s.is_active %}Откл{% else %}Вкл{% endif %}</button>
+        </form>
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="delete_service">
+          <input type="hidden" name="service_id" value="{{ s.id }}">
+          <button class="btn btn-danger btn-xs" data-confirm="Удалить услугу «{{ s.name }}»?">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ─── ПАКЕТЫ ─────────────────────────────────────────────────────── -->
+<div class="card animate" style="margin-bottom:16px">
+  <div class="card-glow"></div>
+  <div class="card-head">
+    <div class="card-title"><span class="card-title-icon">📋</span> Пакеты</div>
+    <button class="btn btn-primary btn-sm" onclick="togglePanel('add-package')">+ Добавить</button>
+  </div>
+  <div id="add-package" style="display:none;background:var(--surface3);border-radius:10px;padding:14px;margin-bottom:14px">
+    <form method="POST" style="display:grid;grid-template-columns:1fr 1fr 2fr 100px 80px auto;gap:8px;align-items:end">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="add_package">
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Услуга *</label>
+        <select name="service_id" required>{% for s in services if s.is_active %}<option value="{{ s.id }}">{{ s.icon }} {{ s.name }}</option>{% endfor %}</select></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Название *</label>
+        <input type="text" name="name" placeholder="Базовый" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Описание</label>
+        <input type="text" name="description" placeholder="200+ каналов · SD"></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">₽/сут *</label>
+        <input type="number" name="price_per_day" placeholder="9.97" step="0.01" min="0.01" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Подкл.</label>
+        <input type="number" name="connections" value="1" min="1" max="100"></div>
+      <button type="submit" class="btn btn-primary btn-sm">Создать</button>
+    </form>
+  </div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Пакет</th><th>Услуга</th><th>₽/сут</th><th>≈₽/мес</th><th>Подкл.</th><th>Подписчики</th><th>Статус</th><th style="width:180px">Действия</th></tr></thead>
+    <tbody>
+    {% for p in packages %}
+    <tr>
+      <td>
+        <div style="font-weight:600">{{ p.name }}</div>
+        {% if p.description %}<div style="font-size:11px;color:var(--text3)">{{ p.description }}</div>{% endif %}
+      </td>
+      <td style="font-size:12px;color:var(--text3)">{{ p.svc_icon }} {{ p.svc_name }}</td>
+      <td style="font-weight:600;color:var(--primary-light)">{{ p.price_per_day }}</td>
+      <td style="font-size:12px;color:var(--text3)">{{ (p.price_per_day * 30)|round(0)|int }}</td>
+      <td class="tbl-mono">{{ p.connections }}</td>
+      <td>{% if pkg_stats.get(p.id) %}<span class="badge badge-green">{{ pkg_stats[p.id] }}</span>
+          {% else %}<span style="color:var(--text3)">0</span>{% endif %}</td>
+      <td>{% if p.is_active %}<span class="badge badge-green">Активен</span>
+          {% else %}<span class="badge badge-red">Откл.</span>{% endif %}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-xs" onclick="editPackage({{ p.id }},'{{ p.name|replace("'","\\'")|e }}','{{ p.description|replace("'","\\'")|e }}',{{ p.price_per_day }},{{ p.connections }})">✏️</button>
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="toggle_package">
+          <input type="hidden" name="package_id" value="{{ p.id }}">
+          <button class="btn btn-ghost btn-xs">{% if p.is_active %}Откл{% else %}Вкл{% endif %}</button>
+        </form>
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="delete_package">
+          <input type="hidden" name="package_id" value="{{ p.id }}">
+          <button class="btn btn-danger btn-xs" data-confirm="Удалить пакет «{{ p.name }}»?">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<!-- ─── СЕРВЕРЫ ─────────────────────────────────────────────────────── -->
+<div class="card animate">
+  <div class="card-glow"></div>
+  <div class="card-head">
+    <div class="card-title"><span class="card-title-icon">🖥</span> Серверы трансляций</div>
+    <button class="btn btn-primary btn-sm" onclick="togglePanel('add-server')">+ Добавить</button>
+  </div>
+  <div id="add-server" style="display:none;background:var(--surface3);border-radius:10px;padding:14px;margin-bottom:14px">
+    <form method="POST" style="display:grid;grid-template-columns:1fr 1fr 2fr 80px 80px 2fr auto;gap:8px;align-items:end">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="add_server">
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Пакет *</label>
+        <select name="package_id" required>{% for p in packages if p.is_active %}<option value="{{ p.id }}">{{ p.svc_icon }} {{ p.name }}</option>{% endfor %}</select></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Название *</label>
+        <input type="text" name="name" placeholder="RU-MSK-1" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">IP / hostname *</label>
+        <input type="text" name="ip" placeholder="10.0.0.1 или server.example.com" required></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Proxy</label>
+        <input type="number" name="proxy_port" value="8080"></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">API</label>
+        <input type="number" name="api_port" value="4444"></div>
+      <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">Комментарий</label>
+        <input type="text" name="comment" placeholder="Москва — основной"></div>
+      <button type="submit" class="btn btn-primary btn-sm">Создать</button>
+    </form>
+  </div>
+  {% if servers %}
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Сервер</th><th>Пакет</th><th>IP / Host</th><th>Proxy</th><th>API</th><th>Комментарий</th><th>Статус</th><th style="width:160px">Действия</th></tr></thead>
+    <tbody>
+    {% for sv in servers %}
+    <tr>
+      <td style="font-weight:600;font-family:monospace;font-size:13px">{{ sv.name }}</td>
+      <td style="font-size:12px;color:var(--text3)">{{ sv.pkg_name }}</td>
+      <td><code style="font-size:12px;color:var(--primary-light)">{{ sv.ip }}</code></td>
+      <td class="tbl-mono">{{ sv.proxy_port }}</td>
+      <td class="tbl-mono">{{ sv.api_port }}</td>
+      <td style="font-size:12px;color:var(--text3)">{{ sv.comment or '—' }}</td>
+      <td>{% if sv.is_active %}<span class="badge badge-green"><span class="badge-dot"></span>Активен</span>
+          {% else %}<span class="badge badge-red">Откл.</span>{% endif %}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-xs" onclick="editServer({{ sv.id }},'{{ sv.name|replace("'","\\'")|e }}','{{ sv.ip|replace("'","\\'")|e }}',{{ sv.proxy_port }},{{ sv.api_port }},'{{ sv.comment|replace("'","\\'")|e if sv.comment else '' }}')">✏️</button>
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="toggle_server">
+          <input type="hidden" name="server_id" value="{{ sv.id }}">
+          <button class="btn btn-ghost btn-xs">{% if sv.is_active %}Откл{% else %}Вкл{% endif %}</button>
+        </form>
+        <form method="POST" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="action" value="delete_server">
+          <input type="hidden" name="server_id" value="{{ sv.id }}">
+          <button class="btn btn-danger btn-xs" data-confirm="Удалить сервер {{ sv.name }}?">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty-state"><div class="empty-state-icon">🖥</div><div class="empty-state-text">Серверы ещё не добавлены</div></div>
+  {% endif %}
+</div>
+
+<!-- Edit modals -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(520px,90vw);max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+      <div id="modal-title" style="font-weight:700;font-size:16px"></div>
+      <button onclick="closeModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <form method="POST" id="modal-form">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" id="modal-action">
+      <input type="hidden" name="service_id"  id="modal-service-id">
+      <input type="hidden" name="package_id"  id="modal-package-id">
+      <input type="hidden" name="server_id"   id="modal-server-id">
+      <div id="modal-fields"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <button type="button" onclick="closeModal()" class="btn btn-ghost">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function togglePanel(id){ const el=document.getElementById(id); el.style.display=el.style.display==='none'?'block':'none' }
+function closeModal(){ document.getElementById('edit-modal').style.display='none' }
+function openModal(title, action){ document.getElementById('modal-title').textContent=title; document.getElementById('modal-action').value=action; document.getElementById('edit-modal').style.display='flex' }
+function field(label, name, value, type='text', extra=''){
+  return `<div class="form-group"><label class="form-label">${label}</label><input type="${type}" name="${name}" value="${value}" ${extra}></div>`
+}
+function editService(id, name, icon, desc){
+  document.getElementById('modal-service-id').value=id
+  document.getElementById('modal-fields').innerHTML=
+    field('Иконка','icon',icon,'text','style="font-size:18px;text-align:center;width:80px"')+
+    field('Название','name',name,'text','required')+
+    field('Описание','description',desc)
+  openModal('✏️ Редактировать услугу','edit_service')
+}
+function editPackage(id, name, desc, price, conns){
+  document.getElementById('modal-package-id').value=id
+  document.getElementById('modal-fields').innerHTML=
+    field('Название','name',name,'text','required')+
+    field('Описание','description',desc)+
+    field('Цена за сутки (₽)','price_per_day',price,'number','step="0.01" min="0.01" required')+
+    field('Одновременных подключений','connections',conns,'number','min="1" max="100"')
+  openModal('✏️ Редактировать пакет','edit_package')
+}
+function editServer(id, name, ip, proxy_port, api_port, comment){
+  document.getElementById('modal-server-id').value=id
+  document.getElementById('modal-fields').innerHTML=
+    field('Название','name',name,'text','required')+
+    field('IP / hostname','ip',ip,'text','required')+
+    field('Порт прокси','proxy_port',proxy_port,'number','min="1" max="65535"')+
+    field('Порт API','api_port',api_port,'number','min="1" max="65535"')+
+    field('Комментарий','comment',comment)
+  openModal('✏️ Редактировать сервер','edit_server')
+}
+document.getElementById('edit-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal() })
+document.addEventListener('keydown', e => e.key==='Escape' && closeModal())
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends 'admin/base.html' %}
+{% block title %}Промокоды{% endblock %}
+{% block content %}
+<div class="page-title animate">🎟 Промокоды</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">➕ Создать промокод</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="add">
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label">Код</label>
+          <input type="text" name="code" placeholder="SUMMER25" maxlength="32" required style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Тип</label>
+          <select name="type" id="promo-type" onchange="updateHint()">
+            <option value="percent">% скидки</option>
+            <option value="fixed">Фиксированная сумма</option>
+            <option value="days">Доп. дни</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label" id="val-label">Значение (%)</label>
+          <input type="number" name="value" id="promo-value" placeholder="10" min="1" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Макс. использований</label>
+          <input type="number" name="max_uses" value="1" min="0" placeholder="0 = безлимит">
+        </div>
+      </div>
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label">Только для тарифа</label>
+          <select name="package_id">
+            <option value="">Любой пакет</option>
+            {% for p in packages %}<option value="{{ p.id }}">{{ p.svc_name }} · {{ p.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Действует до</label>
+          <input type="date" name="valid_until">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Комментарий</label>
+        <input type="text" name="comment" placeholder="Для внутреннего использования" maxlength="200">
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Создать промокод</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title">📋 Все промокоды</div></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Код</th><th>Тип</th><th>Значение</th><th>Исп.</th><th>До</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+        {% for p in promocodes %}
+        <tr>
+          <td><span class="tbl-mono" style="color:#c4b5fd;font-weight:600">{{ p.code }}</span>
+            {% if p.comment %}<div style="font-size:11px;color:var(--text3)">{{ p.comment }}</div>{% endif %}
+          </td>
+          <td style="font-size:12px">
+            {% if p.type=='percent' %}% скидка
+            {% elif p.type=='fixed' %}Сумма
+            {% elif p.type=='days' %}Дни
+            {% else %}{{ p.type }}{% endif %}
+          </td>
+          <td style="font-weight:600;color:#c4b5fd">
+            {% if p.type=='percent' %}{{ p.value|int }}%
+            {% elif p.type=='fixed' %}{{ p.value|int }} ₽
+            {% elif p.type=='days' %}+{{ p.value|int }} дн.
+            {% endif %}
+          </td>
+          <td class="tbl-mono">{{ p.uses }}/{{ p.max_uses if p.max_uses else '∞' }}</td>
+          <td class="tbl-mono" style="font-size:11px">{{ (p.valid_until or '—')[:10] }}</td>
+          <td>{% if p.is_active %}<span class="badge badge-green"><span class="badge-dot"></span>Активен</span>
+              {% else %}<span class="badge badge-red"><span class="badge-dot"></span>Откл.</span>{% endif %}</td>
+          <td style="display:flex;gap:4px">
+            <form method="POST" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="action" value="toggle">
+              <input type="hidden" name="promo_id" value="{{ p.id }}">
+              <button class="btn btn-ghost btn-xs">{% if p.is_active %}Откл{% else %}Вкл{% endif %}</button>
+            </form>
+            <form method="POST" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="promo_id" value="{{ p.id }}">
+              <button class="btn btn-danger btn-xs" data-confirm="Удалить промокод {{ p.code }}?">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not promocodes %}
+        <tr><td colspan="7"><div class="empty-state" style="padding:20px"><div class="empty-state-text">Промокодов нет</div></div></td></tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+const hints = {percent:'Значение (%)', fixed:'Сумма (₽)', days:'Количество дней', trial:'Дней пробного'}
+function updateHint(){
+  const t = document.getElementById('promo-type').value
+  document.getElementById('val-label').textContent = hints[t] || 'Значение'
+}
+</script>
+{% endblock %}

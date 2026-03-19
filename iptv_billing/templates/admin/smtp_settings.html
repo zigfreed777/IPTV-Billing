@@ -1,0 +1,100 @@
+{% extends 'admin/base.html' %}
+{% block title %}Настройки SMTP{% endblock %}
+{% block content %}
+<div class="page-title animate">📧 Настройки SMTP</div>
+<div class="grid grid-2">
+  <div class="card animate">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">⚙️</span> Параметры сервера</div></div>
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="save">
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px">
+          <div class="toggle-wrap">
+            <input type="checkbox" name="enabled" class="toggle-input" {% if not cfg or cfg.enabled %}checked{% endif %}>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </div>
+          Включить отправку email
+        </label>
+      </div>
+      <div class="grid grid-2" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label">SMTP сервер</label>
+          <input type="text" name="host" value="{{ cfg.host if cfg else 'smtp.yandex.ru' }}" placeholder="smtp.yandex.ru">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Порт</label>
+          <input type="number" name="port" value="{{ cfg.port if cfg else 587 }}" placeholder="587">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email (логин)</label>
+        <input type="email" name="user" value="{{ cfg.user if cfg else '' }}" placeholder="noreply@yandex.ru">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль приложения</label>
+        <div style="position:relative">
+          <input type="password" name="password" id="smtp-pass" placeholder="Оставьте пустым чтобы не менять" autocomplete="new-password">
+          <button type="button" onclick="togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">👁</button>
+        </div>
+        <div class="form-hint">Для Yandex — используйте <b>пароль приложения</b>, не пароль аккаунта.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Имя отправителя</label>
+        <input type="text" name="from_name" value="{{ cfg.from_name if cfg else 'IPTV Billing' }}" placeholder="IPTV Billing" maxlength="60">
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL сайта (для ссылок в письмах)</label>
+        <input type="url" name="site_url" value="{{ cfg.site_url if cfg else 'http://localhost:5003' }}" placeholder="https://yourdomain.com">
+        <div class="form-hint">Используется в ссылках внутри писем (подтверждение, сброс пароля, отписка).</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">💾 Сохранить настройки</button>
+    </form>
+  </div>
+  <div class="card animate animate-1">
+    <div class="card-glow"></div>
+    <div class="card-head"><div class="card-title"><span class="card-title-icon">🧪</span> Тест отправки</div></div>
+    {% if test_result %}
+    <div class="flash {{ test_result[0] }}" style="margin-bottom:16px">
+      <span class="flash-icon">{% if test_result[0]=='success' %}✓{% else %}✕{% endif %}</span>
+      <span>{{ test_result[1] }}</span>
+    </div>
+    {% endif %}
+    <form method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="test">
+      <div class="form-group">
+        <label class="form-label">Email для тестового письма</label>
+        <input type="email" name="test_to" placeholder="your@email.com" required>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-full">📨 Отправить тест</button>
+    </form>
+    <div style="margin-top:20px;padding:16px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:10px">
+      <div style="font-size:13px;font-weight:600;color:#a5b4fc;margin-bottom:10px">📋 Настройки для Yandex Mail</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8">
+        <b>SMTP сервер:</b> smtp.yandex.ru<br>
+        <b>Порт 465</b> → SSL (рекомендуется)<br>
+        <b>Порт 587</b> → STARTTLS<br>
+        <b>Логин:</b> полный адрес почты<br>
+        <b>Пароль:</b> пароль <i>приложения</i><br><br>
+        <span style="color:#fbbf24">⚠ Пароль приложения:</span><br>
+        Yandex ID → Безопасность →<br>Пароли приложений → Создать.<br><br>
+        <span style="color:#6ee7b7">💡 При ошибке timeout:</span><br>
+        Попробуйте порт <b>465</b> вместо 587.
+      </div>
+    </div>
+    {% if cfg and cfg.updated_at %}
+    <div style="margin-top:16px;font-size:12px;color:var(--text3);text-align:center">
+      Последнее обновление: {{ cfg.updated_at[:16] }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+<script>
+function togglePass(){
+  const f = document.getElementById('smtp-pass')
+  f.type = f.type === 'password' ? 'text' : 'password'
+}
+</script>
+{% endblock %}
